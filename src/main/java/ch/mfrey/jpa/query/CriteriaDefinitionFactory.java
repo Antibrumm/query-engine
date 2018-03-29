@@ -52,10 +52,13 @@ public class CriteriaDefinitionFactory {
         return false;
     }
 
-    public CriteriaDefinition<?> getCriteriaDefinition(Class<?> entityClass, String propertyAccessor) {
+    @SuppressWarnings("unchecked")
+    public <E extends CriteriaDefinition<?>> E getCriteriaDefinition(Class<?> entityClass,
+            String propertyAccessor) {
+        String processedPropertyAccessor = propertyAccessor.replaceAll("(\\[.*\\])?", "");
         for (CriteriaDefinition<?> definition : getCriteriaDefinitions(entityClass)) {
-            if (propertyAccessor.equals(definition.getPropertyAccessor())) {
-                return definition;
+            if (processedPropertyAccessor.equals(definition.getPropertyAccessor())) {
+                return (E) definition;
             }
         }
         throw new IllegalArgumentException(

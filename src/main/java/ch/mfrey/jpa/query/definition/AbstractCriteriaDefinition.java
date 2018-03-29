@@ -1,13 +1,18 @@
 package ch.mfrey.jpa.query.definition;
 
 import java.beans.PropertyDescriptor;
+import java.lang.reflect.ParameterizedType;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
+import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
 import ch.mfrey.bean.ad.AccessorDescriptor;
+import ch.mfrey.bean.ad.ClassUtils;
 import ch.mfrey.jpa.query.model.Criteria;
+import ch.mfrey.jpa.query.model.Query;
 
 /**
  * The Class CriteriaDefinition.
@@ -40,18 +45,43 @@ public abstract class AbstractCriteriaDefinition<CRITERIA extends Criteria<?>> i
 
     /**
      * Gets the joins.
+     * 
+     * @param criteria
+     * @param query
      *
      * @return the joins
      */
-    public List<String> getJoins() {
+    protected List<String> getJoins(Query query, CRITERIA criteria) {
         List<String> joins = new ArrayList<>();
         if (getAccessorDescriptor().getPropertyLevel() > 0) {
+            String[] links = criteria.getPropertyAccessor().split("\\.");
+            Assert.isTrue(links.length != getAccessorDescriptor().getPropertyLevel(), "Not same length");
             String synonym = StringUtils.uncapitalize(getEntityClass().getSimpleName());
             List<PropertyDescriptor> propertyDescriptors = getAccessorDescriptor().getPropertyDescriptors();
             for (int i = 0; i < propertyDescriptors.size() - 1; i++) {
                 PropertyDescriptor pd = propertyDescriptors.get(i);
                 String nextSynonym = synonym + "_" + pd.getName();
-                joins.add(synonym + QUERY_APPEND_DOT + pd.getName() + " " + nextSynonym);
+                StringBuilder join = new StringBuilder().append(synonym)
+                        .append(QUERY_APPEND_DOT)
+                        .append(pd.getName())
+                        .append(QUERY_APPEND_SPACE)
+                        .append(nextSynonym);
+
+                int mapIdx = links[i].indexOf('[');
+                if (mapIdx != -1) {
+                    if (Map.class.isAssignableFrom(pd.getReadMethod().getReturnType())) {
+                        ParameterizedType pt = (ParameterizedType) pd.getReadMethod().getGenericReturnType();
+                        Class<?> typeToCheck = (Class<?>) pt.getActualTypeArguments()[0];
+                        if (ClassUtils.isSimpleValueType(typeToCheck)) {
+                            join.append(" ON key(")
+                                    .append(nextSynonym)
+                                    .append(") = '")
+                                    .append(links[i].substring(mapIdx+1, links[i].indexOf(']', mapIdx)))
+                                    .append("'");
+                        }
+                    }
+                }
+                joins.add(join.toString());
                 synonym = nextSynonym;
             }
         }
@@ -67,8 +97,10 @@ public abstract class AbstractCriteriaDefinition<CRITERIA extends Criteria<?>> i
         return getAccessorDescriptor().getPropertyAccessor();
     }
 
-    public void applyJoins(StringBuilder joinsPart, List<String> appliedJoins, int position) {
-        for (String join : getJoins()) {
+    @Override
+    public void applyJoins(StringBuilder joinsPart, List<String> appliedJoins, Query query, CRITERIA criteria,
+            int position) {
+        for (String join : getJoins(query, criteria)) {
             if (!appliedJoins.contains(join)) {
                 joinsPart.append(" JOIN ").append(join);
                 appliedJoins.add(join);

@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import ch.mfrey.jpa.query.model.CriteriaString;
+import ch.mfrey.jpa.query.model.Query;
 
 public class CriteriaDefinitionString extends AbstractCriteriaDefinition<CriteriaString> {
 
@@ -13,7 +14,7 @@ public class CriteriaDefinitionString extends AbstractCriteriaDefinition<Criteri
     public static final String CRITERIA_UPPER_STRING_VALUE = "upper({#query.criterias[{0}].parameter})"; //$NON-NLS-1$
 
     @Override
-    public void applyRestriction(StringBuilder restrictionsPart, CriteriaString criteria, int position) {
+    public void applyRestriction(StringBuilder restrictionsPart, Query query, CriteriaString criteria, int position) {
 
         StringBuilder restriction;
         if (criteria.getParameter().indexOf('%') != -1) {

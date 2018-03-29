@@ -2,6 +2,8 @@ package ch.mfrey.jpa.query;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -32,7 +34,7 @@ public class QueryBuilder {
      * @param restrictions
      *            the restrictions
      */
-    private void appendFixedRestrictions(final StringBuilder userRestrictions, final String entitySynonym,
+    protected void appendFixedRestrictions(final StringBuilder userRestrictions, final String entitySynonym,
             final List<String> restrictions) {
         if (userRestrictions.length() == 0) {
             userRestrictions.append(" WHERE ("); //$NON-NLS-1$
@@ -58,7 +60,7 @@ public class QueryBuilder {
      *            the query
      */
     @SuppressWarnings({ "rawtypes", "unchecked" })
-    private void appendQueryRestrictions(final StringBuilder userRestrictions, final Query query) {
+    protected void appendQueryRestrictions(final StringBuilder userRestrictions, final Query query) {
         int brackets = 0;
         for (int position = 0; position < query.getCriterias().size(); position++) {
             Criteria<?> criteria = query.getCriterias().get(position);
@@ -82,7 +84,7 @@ public class QueryBuilder {
                 brackets++;
             }
 
-            cp.applyRestriction(userRestrictions, criteria, position);
+            cp.applyRestriction(userRestrictions, query, criteria, position);
 
             if (criteria.isBracketClose()) {
                 userRestrictions.append(')');
@@ -113,11 +115,38 @@ public class QueryBuilder {
         }
     }
 
-    public String buildJpaQuery(final Query query) {
-        return buildJpaQuery(query, null);
+    /** The Constant QUERY_ORDER_BY. */
+    private static final String QUERY_ORDER_BY = " ORDER BY ";
+
+    /** The Constant QUERY_SELECT. */
+    private static final String QUERY_SELECT = "SELECT ";
+
+    /** The Constant QUERY_WHERE. */
+    private static final String QUERY_WHERE = " WHERE ";
+
+    /** The Constant SELECT_PATTERN. */
+    private static final Pattern SELECT_PATTERN = Pattern.compile("select\\s+(\\w+)\\s+from", Pattern.CASE_INSENSITIVE); //$NON-NLS-1$
+
+    public String buildCountQuery(Query query) {
+        return buildCountQuery(query, null);
     }
 
-    public String buildJpaQuery(final Query query, final List<String> restrictions) {
+    public String buildCountQuery(Query query, List<String> restrictions) {
+        String ejbql = buildQuery(query, restrictions);
+        Matcher m = SELECT_PATTERN.matcher(ejbql);
+        if (m.find()) {
+            String subject = m.group(1);
+            ejbql = new StringBuilder(ejbql.length()).append("select count(").append(subject).append(") from ") //$NON-NLS-1$ //$NON-NLS-2$
+                    .append(ejbql.substring(m.end())).toString();
+        }
+        return ejbql;
+    }
+
+    public String buildQuery(final Query query) {
+        return buildQuery(query, null);
+    }
+
+    public String buildQuery(final Query query, final List<String> restrictions) {
         if (query == null) {
             throw new IllegalArgumentException("Query cannot be null"); //$NON-NLS-1$
         }
@@ -131,7 +160,7 @@ public class QueryBuilder {
                 .append(entitySynonym);
         inner.append(buildJoins(query));
         inner.append(buildWhereClause(query, restrictions));
-        if (!needsSubSelect(query)) {
+        if (!query.needsSubselect()) {
             return inner.toString();
         }
 
@@ -158,7 +187,7 @@ public class QueryBuilder {
      *            the query
      * @return the joins
      */
-    private String buildJoins(final Query query) {
+    private <E extends Criteria<?>> String buildJoins(final Query query) {
         StringBuilder sb = new StringBuilder();
         List<String> appliedJoins = new ArrayList<>();
         for (int position = 0; position < query.getCriterias().size(); position++) {
@@ -167,10 +196,10 @@ public class QueryBuilder {
             if (criteria.getParameter() == null) {
                 continue;
             }
-            CriteriaDefinition<?> cp = criteriaDefinitionFactory.getCriteriaDefinition(
+            CriteriaDefinition<Criteria<?>> cp = criteriaDefinitionFactory.getCriteriaDefinition(
                     query.getEntityClass(),
                     criteria.getPropertyAccessor());
-            cp.applyJoins(sb, appliedJoins, position);
+            cp.applyJoins(sb, appliedJoins, query, criteria, position);
         }
         return sb.toString();
     }
@@ -195,25 +224,6 @@ public class QueryBuilder {
             appendFixedRestrictions(whereClause, query.getSynonym(), fixedRestrictions);
         }
         return whereClause.toString();
-    }
-
-    /**
-     * Needs sub select.
-     *
-     * @param query
-     *            the query
-     * @return true, if successful
-     */
-    private boolean needsSubSelect(final Query query) {
-        for (Criteria<?> dc : query.getCriterias()) {
-            List<String> joins =
-                    criteriaDefinitionFactory.getCriteriaDefinition(query.getEntityClass(), dc.getPropertyAccessor())
-                            .getJoins();
-            if (joins != null && !joins.isEmpty()) {
-                return true;
-            }
-        }
-        return false;
     }
 
 }

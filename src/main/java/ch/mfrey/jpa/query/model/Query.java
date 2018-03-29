@@ -30,4 +30,13 @@ public class Query {
     public String getSynonym() {
         return StringUtils.uncapitalize(getEntityClass().getSimpleName());
     }
+
+    public boolean needsSubselect() {
+        for (Criteria<?> c : getCriterias()) {
+            if (c.getPropertyAccessor().contains(".")) {
+                return true;
+            }
+        }
+        return false;
+    }
 }

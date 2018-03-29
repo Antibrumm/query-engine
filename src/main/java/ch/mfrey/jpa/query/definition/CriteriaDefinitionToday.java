@@ -4,11 +4,12 @@ import java.util.Arrays;
 import java.util.List;
 
 import ch.mfrey.jpa.query.model.CriteriaToday;
+import ch.mfrey.jpa.query.model.Query;
 
 public class CriteriaDefinitionToday extends AbstractCriteriaDefinition<CriteriaToday> {
 
     @Override
-    public void applyRestriction(StringBuilder restrictionsPart, CriteriaToday criteria, int position) {
+    public void applyRestriction(StringBuilder restrictionsPart, Query query, CriteriaToday criteria, int position) {
 
         throw new IllegalArgumentException("TODO");
     }

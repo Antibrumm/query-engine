@@ -4,11 +4,12 @@ import java.util.Arrays;
 import java.util.List;
 
 import ch.mfrey.jpa.query.model.CriteriaString;
+import ch.mfrey.jpa.query.model.Query;
 
 public class CriteriaDefinitionEnum extends AbstractCriteriaDefinition<CriteriaString> {
 
     @Override
-    public void applyRestriction(StringBuilder restrictionsPart, CriteriaString criteria, int position) {
+    public void applyRestriction(StringBuilder restrictionsPart, Query query, CriteriaString criteria, int position) {
 
         StringBuilder restriction = new StringBuilder().append(getSynonym()).append(QUERY_APPEND_DOT)
                 .append(getAccessorDescriptor().getResultDescriptor().getName()) // $NON-NLS-1$
