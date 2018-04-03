@@ -55,14 +55,15 @@ public class CriteriaDefinitionFactory {
 
     @SuppressWarnings("unchecked")
     public <E extends CriteriaDefinition<?>> E getCriteriaDefinition(Class<?> entityClass,
-            String propertyAccessor) {
-        String processedPropertyAccessor = propertyAccessor.replaceAll("(\\[.*\\])?", "");
+            String criteriaKey) {
+        String processedPropertyAccessor = criteriaKey.replaceAll("(\\[.*\\])?", "");
         for (CriteriaDefinition<?> definition : getCriteriaDefinitions(entityClass)) {
             if (processedPropertyAccessor.equals(definition.getPropertyAccessor())) {
                 return (E) definition;
             }
         }
         throw new IllegalArgumentException(
-                "Could not find '" + propertyAccessor + "' in class '" + entityClass.getName() + "'");
+                "Could not find CriteriaDefinition for '" + criteriaKey + "' in class '" + entityClass.getName()
+                        + "' (propertyAccessor '" + processedPropertyAccessor + "')");
     }
 }
