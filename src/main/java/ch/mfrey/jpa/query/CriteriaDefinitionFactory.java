@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import ch.mfrey.bean.ad.AccessorDescriptor;
 import ch.mfrey.bean.ad.AccessorDescriptorFactory;
+import ch.mfrey.jpa.query.builder.CriteriaDefinitionBuilder;
 import ch.mfrey.jpa.query.definition.CriteriaDefinition;
 
 @Service

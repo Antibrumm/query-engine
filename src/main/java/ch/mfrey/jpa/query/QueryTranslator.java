@@ -13,12 +13,12 @@ import ch.mfrey.jpa.query.model.Criteria;
 import ch.mfrey.jpa.query.model.Query;
 
 /**
- * The Class QueryBuilder.
+ * The Class QueryTranslator.
  *
  * @author Martin Frey
  */
 @Service
-public class QueryBuilder {
+public class QueryTranslator {
 
     /** The criteria property factory. */
     @Autowired

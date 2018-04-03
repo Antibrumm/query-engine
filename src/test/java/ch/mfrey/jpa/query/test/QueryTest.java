@@ -11,13 +11,12 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 import ch.mfrey.jpa.query.CriteriaDefinitionFactory;
-import ch.mfrey.jpa.query.QueryBuilder;
 import ch.mfrey.jpa.query.QueryService;
+import ch.mfrey.jpa.query.QueryTranslator;
+import ch.mfrey.jpa.query.builder.CriteriaConfigurer;
+import ch.mfrey.jpa.query.builder.QueryBuilder;
 import ch.mfrey.jpa.query.definition.CriteriaDefinition;
-import ch.mfrey.jpa.query.model.CriteriaBoolean;
 import ch.mfrey.jpa.query.model.CriteriaDate;
-import ch.mfrey.jpa.query.model.CriteriaLong;
-import ch.mfrey.jpa.query.model.CriteriaString;
 import ch.mfrey.jpa.query.model.Query;
 import ch.mfrey.jpa.query.test.entity.A;
 import ch.mfrey.jpa.query.test.entity.ArrayOne;
@@ -35,7 +34,7 @@ public class QueryTest {
     private CriteriaDefinitionFactory criteriaDefinitionFactory;
 
     @Autowired
-    private QueryBuilder queryBuilder;
+    private QueryTranslator queryTranslator;
 
     @Autowired
     private QueryService queryService;
@@ -44,50 +43,46 @@ public class QueryTest {
     public void testA() {
         List<CriteriaDefinition<?>> criteriaDefinitions = criteriaDefinitionFactory.getCriteriaDefinitions(A.class);
         Assert.assertEquals(3, criteriaDefinitions.size());
+        QueryBuilder builder = QueryBuilder
+                .forQuery(A.class)
+                .withCriteria("title", "A")
+                .end();
+        assertAndParse("SELECT a FROM A a"
+                + " WHERE (upper(a.title) = upper({#query.criterias[0].parameter}))",
+                builder.build());
 
-        Query query = new Query();
-        query.setEntityClass(A.class);
-        CriteriaString title = new CriteriaString();
-        title.setPropertyAccessor("title");
-        title.setParameter("A");
-        query.getCriterias().add(title);
-        String jpaQuery = queryBuilder.buildQuery(query);
-        Assert.assertEquals("SELECT a FROM A a WHERE (upper(a.title) = upper({#query.criterias[0].parameter}))",
-                jpaQuery);
-        queryService.parseQuery(query);
+        builder = QueryBuilder
+                .forQuery(A.class)
+                .withCriteria("id", 1L)
+                .end();
+        assertAndParse("SELECT a FROM A a"
+                + " WHERE (a.id = {#query.criterias[0].parameter})",
+                builder.build());
 
-        query = new Query();
-        query.setEntityClass(A.class);
-        CriteriaLong id = new CriteriaLong();
-        id.setPropertyAccessor("id");
-        id.setParameter(1L);
-        query.getCriterias().add(id);
-        jpaQuery = queryBuilder.buildQuery(query);
-        Assert.assertEquals("SELECT a FROM A a WHERE (a.id = {#query.criterias[0].parameter})", jpaQuery);
-        queryService.parseQuery(query);
+        builder = QueryBuilder
+                .forQuery(A.class)
+                .withCriteria("active", true)
+                .end();
+        assertAndParse("SELECT a FROM A a"
+                + " WHERE (a.active = {#query.criterias[0].parameter})",
+                builder.build());
 
-        query = new Query();
-        query.setEntityClass(A.class);
-        CriteriaBoolean active = new CriteriaBoolean();
-        active.setPropertyAccessor("active");
-        active.setParameter(true);
-        query.getCriterias().add(active);
-        jpaQuery = queryBuilder.buildQuery(query);
-        Assert.assertEquals("SELECT a FROM A a WHERE (a.active = {#query.criterias[0].parameter})", jpaQuery);
-        queryService.parseQuery(query);
-
-        query = new Query();
-        query.setEntityClass(A.class);
-        query.getCriterias().add(title);
-        query.getCriterias().add(id);
-        query.getCriterias().add(active);
-        jpaQuery = queryBuilder.buildQuery(query);
-        Assert.assertEquals("SELECT a FROM A a"
+        builder = QueryBuilder
+                .forQuery(A.class).withCriteria("title", "A")
+                .and().withCriteria("id", 1L)
+                .and().withCriteria("active", true)
+                .end();
+        assertAndParse("SELECT a FROM A a"
                 + " WHERE (upper(a.title) = upper({#query.criterias[0].parameter})"
                 + " AND a.id = {#query.criterias[1].parameter}"
-                + " AND a.active = {#query.criterias[2].parameter})", jpaQuery);
-        queryService.parseQuery(query);
+                + " AND a.active = {#query.criterias[2].parameter})",
+                builder.build());
+    }
 
+    private void assertAndParse(String expected, Query query) {
+        Assert.assertEquals(expected, queryTranslator.buildQuery(query));
+        javax.persistence.Query parsed = queryService.parseQuery(query);
+        Assert.assertNotNull(parsed);
     }
 
     @Test
@@ -95,48 +90,33 @@ public class QueryTest {
         List<CriteriaDefinition<?>> criteriaDefinitions = criteriaDefinitionFactory.getCriteriaDefinitions(B.class);
         Assert.assertEquals(6, criteriaDefinitions.size());
 
-        Query query = new Query();
-        query.setEntityClass(B.class);
-        CriteriaString title = new CriteriaString();
-        title.setPropertyAccessor("title");
-        title.setParameter("B");
-        query.getCriterias().add(title);
-        String jpaQuery = queryBuilder.buildQuery(query);
-        Assert.assertEquals("SELECT b FROM B b WHERE (upper(b.title) = upper({#query.criterias[0].parameter}))",
-                jpaQuery);
-        queryService.parseQuery(query);
+        QueryBuilder builder = QueryBuilder
+                .forQuery(B.class)
+                .withCriteria("title", "B")
+                .end();
+        assertAndParse("SELECT b FROM B b"
+                + " WHERE (upper(b.title) = upper({#query.criterias[0].parameter}))",
+                builder.build());
 
-        query = new Query();
-        query.setEntityClass(B.class);
-        CriteriaLong id = new CriteriaLong();
+        builder = QueryBuilder
+                .forQuery(B.class)
+                .withCriteria("a.id", 1L)
+                .end();
+        assertAndParse("SELECT b FROM B b, Dummy WHERE 1=1 AND b IN ("
+                + "SELECT b FROM B b JOIN b.a b_a"
+                + " WHERE (b_a.id = {#query.criterias[0].parameter}))",
+                builder.build());
 
-        id.setPropertyAccessor("a.id");
-        id.setParameter(1L);
-        query.getCriterias().add(id);
-        jpaQuery = queryBuilder.buildQuery(query);
-        Assert.assertEquals(
-                "SELECT b FROM B b, Dummy WHERE 1=1 AND b IN (SELECT b FROM B b JOIN b.a b_a WHERE (b_a.id = {#query.criterias[0].parameter}))",
-                jpaQuery);
-        queryService.parseQuery(query);
-
-        query = new Query();
-        query.setEntityClass(B.class);
-        id = new CriteriaLong();
-        id.setPropertyAccessor("a.id");
-        id.setParameter(1L);
-        query.getCriterias().add(id);
-        title = new CriteriaString();
-        title.setPropertyAccessor("a.title");
-        title.setParameter("A");
-        query.getCriterias().add(title);
-        jpaQuery = queryBuilder.buildQuery(query);
-        Assert.assertEquals(
-                "SELECT b FROM B b, Dummy WHERE 1=1 AND b IN ("
-                        + "SELECT b FROM B b JOIN b.a b_a"
-                        + " WHERE (b_a.id = {#query.criterias[0].parameter}"
-                        + " AND upper(b_a.title) = upper({#query.criterias[1].parameter})))",
-                jpaQuery);
-        queryService.parseQuery(query);
+        builder = QueryBuilder
+                .forQuery(B.class)
+                .withCriteria("a.id", 1L)
+                .and().withCriteria("a.title", "A")
+                .end();
+        assertAndParse("SELECT b FROM B b, Dummy WHERE 1=1 AND b IN ("
+                + "SELECT b FROM B b JOIN b.a b_a"
+                + " WHERE (b_a.id = {#query.criterias[0].parameter}"
+                + " AND upper(b_a.title) = upper({#query.criterias[1].parameter})))",
+                builder.build());
 
     }
 
@@ -144,44 +124,30 @@ public class QueryTest {
     public void testC() {
         List<CriteriaDefinition<?>> criteriaDefinitions = criteriaDefinitionFactory.getCriteriaDefinitions(C.class);
         Assert.assertEquals(15, criteriaDefinitions.size());
-        Query query = new Query();
-        query.setEntityClass(C.class);
-        CriteriaLong id = new CriteriaLong();
-
-        id.setPropertyAccessor("b1.id");
-        id.setParameter(1L);
-        query.getCriterias().add(id);
-        CriteriaString title = new CriteriaString();
-        title.setPropertyAccessor("b1.a.title");
-        title.setParameter("A");
-        query.getCriterias().add(title);
-        String jpaQuery = queryBuilder.buildQuery(query);
-        Assert.assertEquals(
+        QueryBuilder builder = QueryBuilder
+                .forQuery(C.class)
+                .withCriteria("b1.id", 1L)
+                .and().withCriteria("b1.a.title", "A")
+                .end();
+        assertAndParse(
                 "SELECT c FROM C c, Dummy WHERE 1=1 AND c IN ("
                         + "SELECT c FROM C c JOIN c.b1 c_b1 JOIN c_b1.a c_b1_a"
                         + " WHERE (c_b1.id = {#query.criterias[0].parameter}"
                         + " AND upper(c_b1_a.title) = upper({#query.criterias[1].parameter})))",
-                jpaQuery);
-        queryService.parseQuery(query);
+                builder.build());
 
-        query = new Query();
-        query.setEntityClass(C.class);
-        id = new CriteriaLong();
-        id.setPropertyAccessor("b1.id");
-        id.setParameter(1L);
-        query.getCriterias().add(id);
-        title = new CriteriaString();
-        title.setPropertyAccessor("b2.a.title");
-        title.setParameter("A");
-        query.getCriterias().add(title);
-        jpaQuery = queryBuilder.buildQuery(query);
-        Assert.assertEquals(
+        builder = QueryBuilder
+                .forQuery(C.class)
+                .withCriteria("b1.id", 1L)
+                .and().withCriteria("b2.a.title", "A")
+                .end();
+        assertAndParse(
                 "SELECT c FROM C c, Dummy WHERE 1=1 AND c IN ("
                         + "SELECT c FROM C c JOIN c.b1 c_b1 JOIN c.b2 c_b2 JOIN c_b2.a c_b2_a"
                         + " WHERE (c_b1.id = {#query.criterias[0].parameter}"
                         + " AND upper(c_b2_a.title) = upper({#query.criterias[1].parameter})))",
-                jpaQuery);
-        queryService.parseQuery(query);
+                builder.build());
+
     }
 
     @Test
@@ -189,57 +155,48 @@ public class QueryTest {
         List<CriteriaDefinition<?>> criteriaDefinitions = criteriaDefinitionFactory.getCriteriaDefinitions(Date.class);
         Assert.assertEquals(3, criteriaDefinitions.size());
 
-        Query query = new Query();
-        query.setEntityClass(Date.class);
-        CriteriaDate date = new CriteriaDate();
-        date.setPropertyAccessor("date");
-        date.setParameter(LocalDate.now());
-        query.getCriterias().add(date);
-        String jpaQuery = queryBuilder.buildQuery(query);
-        Assert.assertEquals(
-                "SELECT date FROM Date date WHERE (date.date = {#query.criterias[0].parameter})",
-                jpaQuery);
-        queryService.parseQuery(query);
+        CriteriaConfigurer<LocalDate, CriteriaDate> date = QueryBuilder
+                .forQuery(Date.class)
+                .and().withCriteria("date", LocalDate.now());
+        QueryBuilder builder = date.end();
+        assertAndParse(
+                "SELECT date FROM Date date"
+                        + " WHERE (date.date = {#query.criterias[0].parameter})",
+                builder.build());
 
-        date.setOperator(">=");
-        jpaQuery = queryBuilder.buildQuery(query);
-        Assert.assertEquals(
-                "SELECT date FROM Date date WHERE (date.date >= {#query.criterias[0].parameter})",
-                jpaQuery);
-        queryService.parseQuery(query);
+        builder = date.withOperator(">=").end();
+        assertAndParse(
+                "SELECT date FROM Date date"
+                        + " WHERE (date.date >= {#query.criterias[0].parameter})",
+                builder.build());
 
-        date.setOperator("<=");
-        jpaQuery = queryBuilder.buildQuery(query);
-        Assert.assertEquals(
-                "SELECT date FROM Date date WHERE (date.date <= {#query.criterias[0].parameter})",
-                jpaQuery);
-        queryService.parseQuery(query);
+        builder = date.withOperator("<=").end();
+        assertAndParse(
+                "SELECT date FROM Date date"
+                        + " WHERE (date.date <= {#query.criterias[0].parameter})",
+                builder.build());
 
-        query = new Query();
-        query.setEntityClass(Date.class);
-        date = new CriteriaDate();
-        date.setPropertyAccessor("dateTime");
-        date.setParameter(LocalDate.now());
-        query.getCriterias().add(date);
-        jpaQuery = queryBuilder.buildQuery(query);
-        Assert.assertEquals(
-                "SELECT date FROM Date date WHERE (date.dateTime BETWEEN {#query.criterias[0].minDateTime} AND {#query.criterias[0].maxDateTime})",
-                jpaQuery);
-        queryService.parseQuery(query);
+        date = QueryBuilder
+                .forQuery(Date.class)
+                .and().withCriteria("dateTime", LocalDate.now());
+        builder = date.end();
+        assertAndParse(
+                "SELECT date FROM Date date"
+                        + " WHERE (date.dateTime BETWEEN {#query.criterias[0].minDateTime} AND {#query.criterias[0].maxDateTime})",
+                builder.build());
 
-        date.setOperator(">=");
-        jpaQuery = queryBuilder.buildQuery(query);
-        Assert.assertEquals(
-                "SELECT date FROM Date date WHERE (date.dateTime >= {#query.criterias[0].maxDateTime})",
-                jpaQuery);
-        queryService.parseQuery(query);
+        builder = date.withOperator(">=").end();
+        assertAndParse(
+                "SELECT date FROM Date date"
+                        + " WHERE (date.dateTime >= {#query.criterias[0].maxDateTime})",
+                builder.build());
 
-        date.setOperator("<=");
-        jpaQuery = queryBuilder.buildQuery(query);
-        Assert.assertEquals(
-                "SELECT date FROM Date date WHERE (date.dateTime <= {#query.criterias[0].minDateTime})",
-                jpaQuery);
-        queryService.parseQuery(query);
+        builder = date.withOperator("<=").end();
+        assertAndParse(
+                "SELECT date FROM Date date"
+                        + " WHERE (date.dateTime <= {#query.criterias[0].minDateTime})",
+                builder.build());
+
     }
 
     @Test
@@ -248,20 +205,16 @@ public class QueryTest {
                 criteriaDefinitionFactory.getCriteriaDefinitions(ArrayOne.class);
         Assert.assertEquals(4, criteriaDefinitions.size());
 
-        Query query = new Query();
-        query.setEntityClass(ArrayOne.class);
-        CriteriaLong id = new CriteriaLong();
-        id.setPropertyAccessor("manys.id");
-        id.setParameter(1L);
-        query.getCriterias().add(id);
-        String jpaQuery = queryBuilder.buildQuery(query);
-        Assert.assertEquals(
+        QueryBuilder builder = QueryBuilder
+                .forQuery(ArrayOne.class)
+                .and().withCriteria("manys.id", 1L).end();
+        assertAndParse(
                 "SELECT arrayOne FROM ArrayOne arrayOne, Dummy WHERE 1=1 AND arrayOne IN ("
                         + "SELECT arrayOne FROM ArrayOne arrayOne"
                         + " JOIN arrayOne.manys arrayOne_manys WHERE"
                         + " (arrayOne_manys.id = {#query.criterias[0].parameter}))",
-                jpaQuery);
-        queryService.parseQuery(query);
+                builder.build());
+
     }
 
     @Test
@@ -270,20 +223,16 @@ public class QueryTest {
                 criteriaDefinitionFactory.getCriteriaDefinitions(MapOne.class);
         Assert.assertEquals(4, criteriaDefinitions.size());
 
-        Query query = new Query();
-        query.setEntityClass(CollectionOne.class);
-        CriteriaLong id = new CriteriaLong();
-        id.setPropertyAccessor("manys.id");
-        id.setParameter(1L);
-        query.getCriterias().add(id);
-        String jpaQuery = queryBuilder.buildQuery(query);
-        Assert.assertEquals(
+        QueryBuilder builder = QueryBuilder
+                .forQuery(CollectionOne.class)
+                .and().withCriteria("manys.id", 1L).end();
+        assertAndParse(
                 "SELECT collectionOne FROM CollectionOne collectionOne, Dummy WHERE 1=1 AND collectionOne IN ("
                         + "SELECT collectionOne FROM CollectionOne collectionOne"
                         + " JOIN collectionOne.manys collectionOne_manys WHERE"
                         + " (collectionOne_manys.id = {#query.criterias[0].parameter}))",
-                jpaQuery);
-        queryService.parseQuery(query);
+                builder.build());
+
     }
 
     @Test
@@ -292,19 +241,15 @@ public class QueryTest {
                 criteriaDefinitionFactory.getCriteriaDefinitions(MapOne.class);
         Assert.assertEquals(4, criteriaDefinitions.size());
 
-        Query query = new Query();
-        query.setEntityClass(MapOne.class);
-        CriteriaLong id = new CriteriaLong();
-        id.setPropertyAccessor("manys[someStr].id");
-        id.setParameter(1L);
-        query.getCriterias().add(id);
-        String jpaQuery = queryBuilder.buildQuery(query);
-        Assert.assertEquals(
+        QueryBuilder builder = QueryBuilder
+                .forQuery(MapOne.class)
+                .and().withCriteria("manys[someStr].id", 1L).end();
+        assertAndParse(
                 "SELECT mapOne FROM MapOne mapOne, Dummy WHERE 1=1 AND mapOne IN ("
                         + "SELECT mapOne FROM MapOne mapOne"
                         + " JOIN mapOne.manys mapOne_manys ON key(mapOne_manys) = 'someStr'"
                         + " WHERE (mapOne_manys.id = {#query.criterias[0].parameter}))",
-                jpaQuery);
-        queryService.parseQuery(query);
+                builder.build());
+
     }
 }

@@ -1,4 +1,4 @@
-package ch.mfrey.jpa.query;
+package ch.mfrey.jpa.query.builder;
 
 import ch.mfrey.bean.ad.AccessorDescriptor;
 import ch.mfrey.jpa.query.definition.CriteriaDefinition;

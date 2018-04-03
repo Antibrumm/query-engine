@@ -22,7 +22,7 @@ public class QueryService {
     private SpringContextExpressionEvaluator expressionEvaluator;
 
     @Autowired
-    private QueryBuilder queryBuilder;
+    private QueryTranslator queryTranslator;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -37,7 +37,7 @@ public class QueryService {
 
     public javax.persistence.Query parseQuery(Query query, List<String> restrictions) {
         Map<String, String> parameters = new HashMap<>();
-        String queryString = queryBuilder.buildQuery(query, restrictions);
+        String queryString = queryTranslator.buildQuery(query, restrictions);
         StringTokenizer tokens = new StringTokenizer(queryString, "{}", true); //$NON-NLS-1$
         StringBuilder queryBuilder = new StringBuilder(queryString.length());
         while (tokens.hasMoreTokens()) {

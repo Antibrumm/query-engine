@@ -1,4 +1,4 @@
-package ch.mfrey.jpa.query;
+package ch.mfrey.jpa.query.builder;
 
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Field;
