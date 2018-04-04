@@ -10,7 +10,7 @@ public class OperatorNotHandledException extends RuntimeException {
     private static final long serialVersionUID = 1L;
 
     public OperatorNotHandledException(CriteriaDefinition<?> criteriaDefinition, Criteria<?> criteria) {
-        super("Operator not handled in " + criteriaDefinition.getPropertyAccessor() + " : " + criteria.getOperator());
+        super("Operator not handled in " + criteriaDefinition.getCriteriaKey() + " : " + criteria.getOperator());
     }
 
 }

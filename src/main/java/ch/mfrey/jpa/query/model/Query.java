@@ -31,9 +31,14 @@ public class Query {
         return StringUtils.uncapitalize(getEntityClass().getSimpleName());
     }
 
+    /**
+     * Checks if a subselect is needed to deduplicate the results. could be more sophisticated, like "includes ..ToMany join"
+     * 
+     * @return
+     */
     public boolean needsSubselect() {
         for (Criteria<?> c : getCriterias()) {
-            if (c.getPropertyAccessor().contains(".")) {
+            if (c.getCriteriaKey().contains(".")) {
                 return true;
             }
         }

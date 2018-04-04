@@ -3,10 +3,15 @@ package ch.mfrey.jpa.query.definition;
 import java.util.Arrays;
 import java.util.List;
 
+import ch.mfrey.bean.ad.AccessorDescriptor;
 import ch.mfrey.jpa.query.model.CriteriaString;
 import ch.mfrey.jpa.query.model.Query;
 
 public class CriteriaDefinitionString extends AbstractCriteriaDefinition<CriteriaString> {
+
+    public CriteriaDefinitionString(AccessorDescriptor accessorDescriptor) {
+        super(accessorDescriptor);
+    }
 
     /**
      * Expression for fetching the string value from the criteria and use it with ignorecase.
@@ -21,13 +26,13 @@ public class CriteriaDefinitionString extends AbstractCriteriaDefinition<Criteri
             switch (criteria.getOperator()) {
                 case "=":
                     restriction = new StringBuilder().append("upper(").append(getSynonym()) //$NON-NLS-1$
-                            .append(QUERY_APPEND_DOT).append(getAccessorDescriptor().getResultDescriptor().getName())
+                            .append(QUERY_APPEND_DOT).append(getResultDescriptor().getName())
                             .append(')')
                             .append(" LIKE ")
                             .append(CRITERIA_UPPER_STRING_VALUE);
                 case "!=":
                     restriction = new StringBuilder().append("upper(").append(getSynonym()) //$NON-NLS-1$
-                            .append(QUERY_APPEND_DOT).append(getAccessorDescriptor().getResultDescriptor().getName())
+                            .append(QUERY_APPEND_DOT).append(getResultDescriptor().getName())
                             .append(')')
                             .append(" NOT LIKE ")
                             .append(CRITERIA_UPPER_STRING_VALUE);
@@ -37,7 +42,7 @@ public class CriteriaDefinitionString extends AbstractCriteriaDefinition<Criteri
             }
         } else {
             restriction = new StringBuilder().append("upper(").append(getSynonym()) //$NON-NLS-1$
-                    .append(QUERY_APPEND_DOT).append(getAccessorDescriptor().getResultDescriptor().getName())
+                    .append(QUERY_APPEND_DOT).append(getResultDescriptor().getName())
                     .append(')')
                     .append(QUERY_APPEND_SPACE).append(criteria.getOperator()).append(QUERY_APPEND_SPACE)
                     .append(CRITERIA_UPPER_STRING_VALUE);

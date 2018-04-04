@@ -1,18 +1,12 @@
 package ch.mfrey.jpa.query.definition;
 
 import java.beans.PropertyDescriptor;
-import java.lang.reflect.ParameterizedType;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
-import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
 import ch.mfrey.bean.ad.AccessorDescriptor;
-import ch.mfrey.bean.ad.ClassUtils;
 import ch.mfrey.jpa.query.model.Criteria;
-import ch.mfrey.jpa.query.model.Query;
 
 /**
  * The Class CriteriaDefinition.
@@ -30,9 +24,56 @@ public abstract class AbstractCriteriaDefinition<CRITERIA extends Criteria<?>> i
     /** The Constant QUERY_APPEND_SPACE. */
     public static final char QUERY_APPEND_SPACE = ' ';
 
-    public static final String CRITERIA_PARAMETER = "{#query.criterias[{0}].parameter}"; //$NON-NLS-1$
+    public static final String CRITERIA_PARAMETER = "{#query.criterias[|POSITION|].parameter}"; //$NON-NLS-1$
 
-    private AccessorDescriptor accessorDescriptor;
+    private final Class<?> entityClass;
+
+    private final int propertyLevel;
+
+    private final List<PropertyDescriptor> propertyDescriptors;
+
+    private final String fullPropertyAccessor;
+
+    private final String criteriaKey;
+
+    public AbstractCriteriaDefinition(AccessorDescriptor accessorDescriptor) {
+        this.entityClass = accessorDescriptor.getType();
+        this.criteriaKey = accessorDescriptor.getPropertyAccessor();
+        this.fullPropertyAccessor = accessorDescriptor.getFullPropertyAccessor();
+        this.propertyDescriptors = accessorDescriptor.getPropertyDescriptors();
+        this.propertyLevel = accessorDescriptor.getPropertyLevel();
+    }
+
+    public String getCriteriaKey() {
+        return criteriaKey;
+    }
+
+    /**
+     * Gets the property descriptors.
+     *
+     * @return the property descriptors
+     */
+    public List<PropertyDescriptor> getPropertyDescriptors() {
+        return propertyDescriptors;
+    }
+
+    /**
+     * Gets the property level.
+     *
+     * @return the property level
+     */
+    public int getPropertyLevel() {
+        return propertyLevel;
+    }
+
+    /**
+     * Gets the result descriptor.
+     *
+     * @return the result descriptor
+     */
+    public PropertyDescriptor getResultDescriptor() {
+        return propertyDescriptors.get(propertyDescriptors.size() - 1);
+    }
 
     /**
      * Gets the entity class.
@@ -40,97 +81,26 @@ public abstract class AbstractCriteriaDefinition<CRITERIA extends Criteria<?>> i
      * @return the entity class
      */
     public Class<?> getEntityClass() {
-        return getAccessorDescriptor().getType();
+        return entityClass;
     }
 
-    /**
-     * Gets the joins.
-     * 
-     * @param criteria
-     * @param query
-     *
-     * @return the joins
-     */
-    protected List<String> getJoins(Query query, CRITERIA criteria) {
-        List<String> joins = new ArrayList<>();
-        if (getAccessorDescriptor().getPropertyLevel() > 0) {
-            String[] links = criteria.getPropertyAccessor().split("\\.");
-            Assert.isTrue(links.length != getAccessorDescriptor().getPropertyLevel(), "Not same length");
-            String synonym = StringUtils.uncapitalize(getEntityClass().getSimpleName());
-            List<PropertyDescriptor> propertyDescriptors = getAccessorDescriptor().getPropertyDescriptors();
-            for (int i = 0; i < propertyDescriptors.size() - 1; i++) {
-                PropertyDescriptor pd = propertyDescriptors.get(i);
-                String nextSynonym = synonym + "_" + pd.getName();
-                StringBuilder join = new StringBuilder().append(synonym)
-                        .append(QUERY_APPEND_DOT)
-                        .append(pd.getName())
-                        .append(QUERY_APPEND_SPACE)
-                        .append(nextSynonym);
-
-                int mapIdx = links[i].indexOf('[');
-                if (mapIdx != -1) {
-                    if (Map.class.isAssignableFrom(pd.getReadMethod().getReturnType())) {
-                        ParameterizedType pt = (ParameterizedType) pd.getReadMethod().getGenericReturnType();
-                        Class<?> typeToCheck = (Class<?>) pt.getActualTypeArguments()[0];
-                        if (ClassUtils.isSimpleValueType(typeToCheck)) {
-                            join.append(" ON key(")
-                                    .append(nextSynonym)
-                                    .append(") = '")
-                                    .append(links[i].substring(mapIdx+1, links[i].indexOf(']', mapIdx)))
-                                    .append("'");
-                        }
-                    }
-                }
-                joins.add(join.toString());
-                synonym = nextSynonym;
-            }
-        }
-        return joins;
-    }
-
-    /**
-     * Gets the property accessor.
-     *
-     * @return the property accessor
-     */
-    public String getPropertyAccessor() {
-        return getAccessorDescriptor().getPropertyAccessor();
-    }
-
-    @Override
-    public void applyJoins(StringBuilder joinsPart, List<String> appliedJoins, Query query, CRITERIA criteria,
-            int position) {
-        for (String join : getJoins(query, criteria)) {
-            if (!appliedJoins.contains(join)) {
-                joinsPart.append(" JOIN ").append(join);
-                appliedJoins.add(join);
-            }
-        }
-    }
-
-    public AccessorDescriptor getAccessorDescriptor() {
-        return accessorDescriptor;
-    }
-
-    public void setAccessorDescriptor(AccessorDescriptor accessorDescriptor) {
-        this.accessorDescriptor = accessorDescriptor;
-    }
+    
 
     public String getSynonym() {
         String base = StringUtils.uncapitalize(getEntityClass().getSimpleName());
-        if (accessorDescriptor.getPropertyLevel() == 0) {
+        if (getPropertyLevel() == 0) {
             return base;
         }
-        String propertyAccessor = accessorDescriptor.getPropertyAccessor();
+        String criteriaKey = getCriteriaKey();
         String synonym = base + "_"
-                + propertyAccessor
-                        .substring(0, propertyAccessor.lastIndexOf('.'))
+                + criteriaKey
+                        .substring(0, criteriaKey.lastIndexOf('.'))
                         .replace('.', '_');
         return synonym;
     }
 
     public boolean isNullable() {
-        for (PropertyDescriptor pd : getAccessorDescriptor().getPropertyDescriptors()) {
+        for (PropertyDescriptor pd : getPropertyDescriptors()) {
             if (pd.getReadMethod() != null) {
                 return true;
             }
@@ -140,7 +110,7 @@ public abstract class AbstractCriteriaDefinition<CRITERIA extends Criteria<?>> i
 
     protected StringBuilder replacePosition(StringBuilder restriction, int position) {
         int start;
-        while ((start = restriction.indexOf("{0}")) != -1) {
+        while ((start = restriction.indexOf("|POSITION|")) != -1) {
             restriction.replace(start, start + 3, String.valueOf(position));
         }
         return restriction;
@@ -148,6 +118,10 @@ public abstract class AbstractCriteriaDefinition<CRITERIA extends Criteria<?>> i
 
     public boolean isTerminal() {
         return true;
+    }
+
+    public String getFullPropertyAccessor() {
+        return fullPropertyAccessor;
     }
 
 }

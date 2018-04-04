@@ -20,7 +20,7 @@ public class CriteriaConfigurer<PARAMETER_TYPE, CRITERIA_TYPE extends AbstractCr
             PARAMETER_TYPE parameter) {
         this.queryBuilder = queryBuilder;
         this.criteria = criteria;
-        this.criteria.setPropertyAccessor(criteriaKey);
+        this.criteria.setCriteriaKey(criteriaKey);
         this.criteria.setParameter(parameter);
         queryBuilder.getQuery().getCriterias().add(this.criteria);
     }

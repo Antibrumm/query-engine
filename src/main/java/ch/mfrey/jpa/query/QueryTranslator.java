@@ -1,13 +1,19 @@
 package ch.mfrey.jpa.query;
 
+import java.beans.PropertyDescriptor;
+import java.lang.reflect.ParameterizedType;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.Assert;
 
+import ch.mfrey.bean.ad.ClassUtils;
+import ch.mfrey.jpa.query.definition.AbstractCriteriaDefinition;
 import ch.mfrey.jpa.query.definition.CriteriaDefinition;
 import ch.mfrey.jpa.query.model.Criteria;
 import ch.mfrey.jpa.query.model.Query;
@@ -27,40 +33,41 @@ public class QueryTranslator {
     /**
      * Append fixed restrictions.
      *
-     * @param userRestrictions
+     * @param resultingRestrictions
      *            the user restrictions
      * @param entitySynonym
      *            the entity synonym
-     * @param restrictions
+     * @param explicitRestrictions
      *            the restrictions
      */
-    protected void appendFixedRestrictions(final StringBuilder userRestrictions, final String entitySynonym,
-            final List<String> restrictions) {
-        if (userRestrictions.length() == 0) {
-            userRestrictions.append(" WHERE ("); //$NON-NLS-1$
+    protected void appendExplicitRestrictions(final StringBuilder resultingRestrictions, final String entitySynonym,
+            final List<String> explicitRestrictions) {
+        if (resultingRestrictions.length() == 0) {
+            resultingRestrictions.append(" WHERE ("); //$NON-NLS-1$
         } else {
-            userRestrictions.append(" AND ("); //$NON-NLS-1$
+            resultingRestrictions.append(" AND ("); //$NON-NLS-1$
         }
-        for (int i = 0; i < restrictions.size(); i++) {
+        for (int i = 0; i < explicitRestrictions.size(); i++) {
             if (i > 0) {
-                userRestrictions.append(" AND "); //$NON-NLS-1$
+                resultingRestrictions.append(" AND "); //$NON-NLS-1$
             }
-            userRestrictions
-                    .append('(').append(restrictions.get(i).replaceAll("|entitySynonym|", entitySynonym)).append(')'); //$NON-NLS-1$
+            resultingRestrictions
+                    .append('(').append(explicitRestrictions.get(i).replaceAll("|entitySynonym|", entitySynonym)) //$NON-NLS-1$
+                    .append(')');
         }
-        userRestrictions.append(')');
+        resultingRestrictions.append(')');
     }
 
     /**
      * Append query restrictions.
      *
-     * @param userRestrictions
+     * @param resultingRestrictions
      *            the user restrictions
      * @param query
      *            the query
      */
     @SuppressWarnings({ "rawtypes", "unchecked" })
-    protected void appendQueryRestrictions(final StringBuilder userRestrictions, final Query query) {
+    protected void appendQueryRestrictions(final StringBuilder resultingRestrictions, final Query query) {
         int brackets = 0;
         for (int position = 0; position < query.getCriterias().size(); position++) {
             Criteria<?> criteria = query.getCriterias().get(position);
@@ -69,50 +76,93 @@ public class QueryTranslator {
             if (criteria.getParameter() == null) {
                 continue;
             }
-            CriteriaDefinition cp =
+            CriteriaDefinition definition =
                     criteriaDefinitionFactory.getCriteriaDefinition(query.getEntityClass(),
-                            criteria.getPropertyAccessor());
-            if (userRestrictions.length() == 0) {
-                userRestrictions.append(" WHERE ("); //$NON-NLS-1$
+                            criteria.getCriteriaKey());
+            if (resultingRestrictions.length() == 0) {
+                resultingRestrictions.append(" WHERE ("); //$NON-NLS-1$
             } else {
-                userRestrictions.append(' ');
-                userRestrictions.append(criteria.getLinkOperator());
-                userRestrictions.append(' ');
+                resultingRestrictions.append(' ');
+                resultingRestrictions.append(criteria.getLinkOperator());
+                resultingRestrictions.append(' ');
             }
             if (criteria.isBracketOpen()) {
-                userRestrictions.append('(');
+                resultingRestrictions.append('(');
                 brackets++;
             }
 
-            cp.applyRestriction(userRestrictions, query, criteria, position);
+            definition.applyRestriction(resultingRestrictions, query, criteria, position);
 
             if (criteria.isBracketClose()) {
-                userRestrictions.append(')');
+                resultingRestrictions.append(')');
                 brackets--;
             }
 
         }
-        if (userRestrictions.length() > 0) {
+        if (resultingRestrictions.length() > 0) {
             // if the user just closed some brackets but never
             // opened some correct the brackets with placing the forgotten
             // ones directly after the WHERE
             if (brackets < 0) {
-                int whereIndex = userRestrictions.indexOf("WHERE (") + 6; //$NON-NLS-1$
+                int whereIndex = resultingRestrictions.indexOf("WHERE (") + 6; //$NON-NLS-1$
                 while (brackets < 0) {
-                    userRestrictions.insert(whereIndex, "("); //$NON-NLS-1$
+                    resultingRestrictions.insert(whereIndex, "("); //$NON-NLS-1$
                     brackets++;
                 }
             }
             // close the brackets if the user just opened some correct it
             // with placing the forgotten ones at the end
             while (brackets > 0) {
-                userRestrictions.append(')');
+                resultingRestrictions.append(')');
                 brackets--;
             }
             // This is the general bracket from the initial where
             // clause
-            userRestrictions.append(')');
+            resultingRestrictions.append(')');
         }
+    }
+
+    /**
+     * Gets the joins.
+     * 
+     * @param criteria
+     * @param query
+     *
+     * @return the joins
+     */
+    protected List<String> getJoins(Query query, Criteria<?> criteria, CriteriaDefinition<Criteria<?>> definition) {
+        List<String> joins = new ArrayList<>();
+        String[] links = criteria.getCriteriaKey().split("\\.");
+        Assert.isTrue(links.length != definition.getPropertyDescriptors().size() + 1, "Not same length");
+        String synonym = query.getSynonym();
+        List<PropertyDescriptor> propertyDescriptors = definition.getPropertyDescriptors();
+        for (int i = 0; i < propertyDescriptors.size() - 1; i++) {
+            PropertyDescriptor pd = propertyDescriptors.get(i);
+            String nextSynonym = synonym + "_" + pd.getName();
+            StringBuilder join = new StringBuilder().append(synonym)
+                    .append(AbstractCriteriaDefinition.QUERY_APPEND_DOT)
+                    .append(pd.getName())
+                    .append(AbstractCriteriaDefinition.QUERY_APPEND_SPACE)
+                    .append(nextSynonym);
+
+            int mapIdx = links[i].indexOf('[');
+            if (mapIdx != -1) {
+                if (Map.class.isAssignableFrom(pd.getReadMethod().getReturnType())) {
+                    ParameterizedType pt = (ParameterizedType) pd.getReadMethod().getGenericReturnType();
+                    Class<?> typeToCheck = (Class<?>) pt.getActualTypeArguments()[0];
+                    if (ClassUtils.isSimpleValueType(typeToCheck)) {
+                        join.append(" ON key(")
+                                .append(nextSynonym)
+                                .append(") = '")
+                                .append(links[i].substring(mapIdx + 1, links[i].indexOf(']', mapIdx)))
+                                .append("'");
+                    }
+                }
+            }
+            joins.add(join.toString());
+            synonym = nextSynonym;
+        }
+        return joins;
     }
 
     /** The Constant QUERY_ORDER_BY. */
@@ -123,6 +173,9 @@ public class QueryTranslator {
 
     /** The Constant QUERY_WHERE. */
     private static final String QUERY_WHERE = " WHERE ";
+
+    /** The Constant QUERY_FROM. */
+    private static final String QUERY_FROM = " FROM ";
 
     /** The Constant SELECT_PATTERN. */
     private static final Pattern SELECT_PATTERN = Pattern.compile("select\\s+(\\w+)\\s+from", Pattern.CASE_INSENSITIVE); //$NON-NLS-1$
@@ -136,7 +189,7 @@ public class QueryTranslator {
         Matcher m = SELECT_PATTERN.matcher(ejbql);
         if (m.find()) {
             String subject = m.group(1);
-            ejbql = new StringBuilder(ejbql.length()).append("select count(").append(subject).append(") from ") //$NON-NLS-1$ //$NON-NLS-2$
+            ejbql = new StringBuilder(ejbql.length()).append("SELECT count(").append(subject).append(") FROM ") //$NON-NLS-1$ //$NON-NLS-2$
                     .append(ejbql.substring(m.end())).toString();
         }
         return ejbql;
@@ -146,32 +199,32 @@ public class QueryTranslator {
         return buildQuery(query, null);
     }
 
-    public String buildQuery(final Query query, final List<String> restrictions) {
+    public String buildQuery(final Query query, final List<String> explicitRestrictions) {
         if (query == null) {
             throw new IllegalArgumentException("Query cannot be null"); //$NON-NLS-1$
         }
-        String entityClassName = query.getEntityClass().getSimpleName();
+        String entityName = query.getEntityClass().getSimpleName();
         String entitySynonym = query.getSynonym();
         StringBuilder inner = new StringBuilder(64);
-        inner.append("SELECT ").append(entitySynonym)
-                .append(" FROM ")
-                .append(entityClassName)
+        inner.append(QUERY_SELECT).append(entitySynonym)
+                .append(QUERY_FROM)
+                .append(entityName)
                 .append(' ')
                 .append(entitySynonym);
         inner.append(buildJoins(query));
-        inner.append(buildWhereClause(query, restrictions));
+        inner.append(buildWhereClause(query, explicitRestrictions));
         if (!query.needsSubselect()) {
             return inner.toString();
         }
 
         StringBuilder full = new StringBuilder(64);
-        full.append("SELECT ")
+        full.append(QUERY_SELECT)
                 .append(entitySynonym)
-                .append(" FROM ")
-                .append(entityClassName)
+                .append(QUERY_FROM)
+                .append(entityName)
                 .append(' ')
                 .append(entitySynonym)
-                .append(", Dummy WHERE 1=1 AND ")
+                .append(QUERY_WHERE)
                 .append(entitySynonym)
                 .append(" IN (");
 
@@ -187,8 +240,8 @@ public class QueryTranslator {
      *            the query
      * @return the joins
      */
-    private <E extends Criteria<?>> String buildJoins(final Query query) {
-        StringBuilder sb = new StringBuilder();
+    protected <E extends Criteria<?>> String buildJoins(final Query query) {
+        StringBuilder joinsPart = new StringBuilder();
         List<String> appliedJoins = new ArrayList<>();
         for (int position = 0; position < query.getCriterias().size(); position++) {
             Criteria<?> criteria = query.getCriterias().get(position);
@@ -196,12 +249,17 @@ public class QueryTranslator {
             if (criteria.getParameter() == null) {
                 continue;
             }
-            CriteriaDefinition<Criteria<?>> cp = criteriaDefinitionFactory.getCriteriaDefinition(
+            CriteriaDefinition<Criteria<?>> definition = criteriaDefinitionFactory.getCriteriaDefinition(
                     query.getEntityClass(),
-                    criteria.getPropertyAccessor());
-            cp.applyJoins(sb, appliedJoins, query, criteria, position);
+                    criteria.getCriteriaKey());
+            for (String join : getJoins(query, criteria, definition)) {
+                if (!appliedJoins.contains(join)) {
+                    joinsPart.append(" JOIN ").append(join);
+                    appliedJoins.add(join);
+                }
+            }
         }
-        return sb.toString();
+        return joinsPart.toString();
     }
 
     /**
@@ -215,13 +273,13 @@ public class QueryTranslator {
      *            the ignorable states
      * @return the user criterias
      */
-    protected String buildWhereClause(final Query query, final List<String> fixedRestrictions) {
+    protected String buildWhereClause(final Query query, final List<String> explicitRestrictions) {
         StringBuilder whereClause = new StringBuilder();
         if (!query.getCriterias().isEmpty()) {
             appendQueryRestrictions(whereClause, query);
         }
-        if (fixedRestrictions != null && !fixedRestrictions.isEmpty()) {
-            appendFixedRestrictions(whereClause, query.getSynonym(), fixedRestrictions);
+        if (explicitRestrictions != null && !explicitRestrictions.isEmpty()) {
+            appendExplicitRestrictions(whereClause, query.getSynonym(), explicitRestrictions);
         }
         return whereClause.toString();
     }

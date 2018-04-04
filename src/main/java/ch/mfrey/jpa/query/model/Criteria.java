@@ -6,7 +6,7 @@ public interface Criteria<PARAMETER_TYPE> {
 
     PARAMETER_TYPE getParameter();
 
-    String getPropertyAccessor();
+    String getCriteriaKey();
 
     String getLinkOperator();
 

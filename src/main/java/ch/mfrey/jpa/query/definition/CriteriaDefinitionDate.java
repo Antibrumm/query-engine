@@ -4,10 +4,15 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 
+import ch.mfrey.bean.ad.AccessorDescriptor;
 import ch.mfrey.jpa.query.model.CriteriaDate;
 import ch.mfrey.jpa.query.model.Query;
 
 public class CriteriaDefinitionDate extends AbstractCriteriaDefinition<CriteriaDate> {
+
+    public CriteriaDefinitionDate(AccessorDescriptor accessorDescriptor) {
+        super(accessorDescriptor);
+    }
 
     /** The Constant CRITERIA_DATE_EQUAL_PARAMETER. */
     public static final String CRITERIA_DATE_TIME_MAX_PARAMETER =
@@ -26,29 +31,29 @@ public class CriteriaDefinitionDate extends AbstractCriteriaDefinition<CriteriaD
 
         StringBuilder restriction;
         if (LocalDateTime.class.isAssignableFrom(
-                getAccessorDescriptor().getResultDescriptor().getPropertyType())) {
+                getResultDescriptor().getPropertyType())) {
             switch (criteria.getOperator()) {
                 case "=":
                     restriction = new StringBuilder().append(getSynonym()).append(QUERY_APPEND_DOT)
-                            .append(getAccessorDescriptor().getResultDescriptor().getName())
+                            .append(getResultDescriptor().getName())
                             .append(CRITERIA_DATE_TIME_BETWEEN_PARAMETER);
                     break;
                 case "!=":
                     restriction = new StringBuilder().append(getSynonym()).append(QUERY_APPEND_DOT)
-                            .append(getAccessorDescriptor().getResultDescriptor().getName())
+                            .append(getResultDescriptor().getName())
                             .append(" NOT ").append(CRITERIA_DATE_TIME_BETWEEN_PARAMETER);
                     break;
                 case "<":
                 case "<=":
                     restriction = new StringBuilder().append(getSynonym()).append(QUERY_APPEND_DOT)
-                            .append(getAccessorDescriptor().getResultDescriptor().getName())
+                            .append(getResultDescriptor().getName())
                             .append(QUERY_APPEND_SPACE).append(criteria.getOperator()).append(QUERY_APPEND_SPACE)
                             .append(CRITERIA_DATE_TIME_MIN_PARAMETER);
                     break;
                 case ">":
                 case ">=":
                     restriction = new StringBuilder().append(getSynonym()).append(QUERY_APPEND_DOT)
-                            .append(getAccessorDescriptor().getResultDescriptor().getName())
+                            .append(getResultDescriptor().getName())
                             .append(QUERY_APPEND_SPACE).append(criteria.getOperator()).append(QUERY_APPEND_SPACE)
                             .append(CRITERIA_DATE_TIME_MAX_PARAMETER);
                     break;
@@ -57,7 +62,7 @@ public class CriteriaDefinitionDate extends AbstractCriteriaDefinition<CriteriaD
             }
         } else {
             restriction = new StringBuilder().append(getSynonym()).append(QUERY_APPEND_DOT)
-                    .append(getAccessorDescriptor().getResultDescriptor().getName())
+                    .append(getResultDescriptor().getName())
                     .append(QUERY_APPEND_SPACE).append(criteria.getOperator()).append(QUERY_APPEND_SPACE)
                     .append(CRITERIA_PARAMETER);
         }

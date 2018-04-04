@@ -27,6 +27,11 @@ public class CriteriaDefinitionFactory {
                 boolean isTerminating = handleAccessorDescriptor(descriptor, definitions);
                 if (isTerminating) {
                     terminatingDescriptors.add(descriptor.getPropertyAccessor());
+                } else {
+                    // we need to check deeper as there might be other references of the same class which
+                    // should produce more criterias.
+                    // ..ToMany backreferences and any other reference
+                    
                 }
             }
         }
@@ -56,14 +61,14 @@ public class CriteriaDefinitionFactory {
     @SuppressWarnings("unchecked")
     public <E extends CriteriaDefinition<?>> E getCriteriaDefinition(Class<?> entityClass,
             String criteriaKey) {
-        String processedPropertyAccessor = criteriaKey.replaceAll("(\\[.*\\])?", "");
+        String processedKey = criteriaKey.replaceAll("(\\[.*\\])?", "");
         for (CriteriaDefinition<?> definition : getCriteriaDefinitions(entityClass)) {
-            if (processedPropertyAccessor.equals(definition.getPropertyAccessor())) {
+            if (processedKey.equals(definition.getCriteriaKey())) {
                 return (E) definition;
             }
         }
         throw new IllegalArgumentException(
                 "Could not find CriteriaDefinition for '" + criteriaKey + "' in class '" + entityClass.getName()
-                        + "' (propertyAccessor '" + processedPropertyAccessor + "')");
+                        + "' (propertyAccessor '" + processedKey + "')");
     }
 }

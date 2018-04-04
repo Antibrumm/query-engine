@@ -8,7 +8,7 @@ public abstract class AbstractCriteria<PARAMETER_TYPE> implements Criteria<PARAM
 
     private Class<?> entityClass;
 
-    private String propertyAccessor;
+    private String criteriaKey;
 
     /** The link operator. */
     private String linkOperator = "AND"; //$NON-NLS-1$
@@ -42,12 +42,12 @@ public abstract class AbstractCriteria<PARAMETER_TYPE> implements Criteria<PARAM
         this.entityClass = entityClass;
     }
 
-    public String getPropertyAccessor() {
-        return propertyAccessor;
+    public String getCriteriaKey() {
+        return criteriaKey;
     }
 
-    public void setPropertyAccessor(String propertyAccessor) {
-        this.propertyAccessor = propertyAccessor;
+    public void setCriteriaKey(String criteriaKey) {
+        this.criteriaKey = criteriaKey;
     }
 
     public String getLinkOperator() {

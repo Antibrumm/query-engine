@@ -30,10 +30,6 @@ import ch.mfrey.jpa.query.definition.CriteriaDefinitionDate;
 import ch.mfrey.jpa.query.definition.CriteriaDefinitionNumber;
 import ch.mfrey.jpa.query.definition.CriteriaDefinitionString;
 import ch.mfrey.jpa.query.model.Criteria;
-import ch.mfrey.jpa.query.model.CriteriaDouble;
-import ch.mfrey.jpa.query.model.CriteriaFloat;
-import ch.mfrey.jpa.query.model.CriteriaInteger;
-import ch.mfrey.jpa.query.model.CriteriaLong;
 
 @SuppressWarnings("rawtypes")
 @Component
@@ -44,47 +40,30 @@ public class DefaultCriteriaDefinitionBuilder
     public CriteriaDefinition build(AccessorDescriptor descriptor) {
         Class<?> resultType = descriptor.getResultDescriptor().getPropertyType();
         if (String.class.isAssignableFrom(resultType)) {
-            CriteriaDefinitionString criteria = new CriteriaDefinitionString();
-            criteria.setAccessorDescriptor(descriptor);
-            return criteria;
+            return new CriteriaDefinitionString(descriptor);
         }
         if (Integer.class.isAssignableFrom(resultType)) {
-            CriteriaDefinitionNumber<CriteriaInteger> criteria = new CriteriaDefinitionNumber<>();
-            criteria.setAccessorDescriptor(descriptor);
-            return criteria;
+            return new CriteriaDefinitionNumber<>(descriptor);
         }
         if (Long.class.isAssignableFrom(resultType)) {
-            CriteriaDefinitionNumber<CriteriaLong> criteria = new CriteriaDefinitionNumber<>();
-            criteria.setAccessorDescriptor(descriptor);
-            return criteria;
+            return new CriteriaDefinitionNumber<>(descriptor);
         }
         if (Float.class.isAssignableFrom(resultType)) {
-            CriteriaDefinitionNumber<CriteriaFloat> criteria = new CriteriaDefinitionNumber<>();
-            criteria.setAccessorDescriptor(descriptor);
-            return criteria;
+            return new CriteriaDefinitionNumber<>(descriptor);
         }
         if (Double.class.isAssignableFrom(resultType)) {
-            CriteriaDefinitionNumber<CriteriaDouble> criteria = new CriteriaDefinitionNumber<>();
-            criteria.setAccessorDescriptor(descriptor);
-            return criteria;
+            return new CriteriaDefinitionNumber<>(descriptor);
         }
         if (Boolean.class.isAssignableFrom(resultType)) {
-            CriteriaDefinitionBoolean criteria = new CriteriaDefinitionBoolean();
-            criteria.setAccessorDescriptor(descriptor);
-            return criteria;
+            return new CriteriaDefinitionBoolean(descriptor);
         }
         if (LocalDate.class.isAssignableFrom(resultType)) {
-            CriteriaDefinitionDate criteria = new CriteriaDefinitionDate();
-            criteria.setAccessorDescriptor(descriptor);
-            return criteria;
+            return new CriteriaDefinitionDate(descriptor);
         }
         if (LocalDateTime.class.isAssignableFrom(resultType)) {
-            CriteriaDefinitionDate criteria = new CriteriaDefinitionDate();
-            criteria.setAccessorDescriptor(descriptor);
-            return criteria;
+            return new CriteriaDefinitionDate(descriptor);
         }
         throw new IllegalArgumentException("EEK");
-
     }
 
     public boolean isEntity(final Class<?> beanClass) {
