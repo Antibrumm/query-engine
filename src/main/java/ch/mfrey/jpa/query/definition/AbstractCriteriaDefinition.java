@@ -108,14 +108,6 @@ public abstract class AbstractCriteriaDefinition<CRITERIA extends Criteria<?>> i
         return false;
     }
 
-    protected StringBuilder replacePosition(StringBuilder restriction, int position) {
-        int start;
-        while ((start = restriction.indexOf("|POSITION|")) != -1) {
-            restriction.replace(start, start + 3, String.valueOf(position));
-        }
-        return restriction;
-    }
-
     public boolean isTerminal() {
         return true;
     }

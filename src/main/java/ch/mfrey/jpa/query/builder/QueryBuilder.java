@@ -2,65 +2,55 @@ package ch.mfrey.jpa.query.builder;
 
 import java.time.LocalDate;
 
-import ch.mfrey.jpa.query.model.CriteriaBoolean;
 import ch.mfrey.jpa.query.model.CriteriaDate;
-import ch.mfrey.jpa.query.model.CriteriaDouble;
-import ch.mfrey.jpa.query.model.CriteriaFloat;
-import ch.mfrey.jpa.query.model.CriteriaInteger;
-import ch.mfrey.jpa.query.model.CriteriaLong;
-import ch.mfrey.jpa.query.model.CriteriaString;
+import ch.mfrey.jpa.query.model.CriteriaSimple;
 import ch.mfrey.jpa.query.model.Query;
 
-public class QueryBuilder {
+public class QueryBuilder<E> {
 
-    private Query query;
+    private Query<E> query;
 
-    private QueryBuilder(Query query) {
+    private QueryBuilder(Query<E> query) {
         this.query = query;
     }
 
-    public static QueryBuilder forQuery(Class<?> entityClass) {
-        Query query = new Query();
+    public static <E> QueryBuilder<E> forEntity(Class<E> entityClass) {
+        Query<E> query = new Query<>();
         query.setEntityClass(entityClass);
-        return new QueryBuilder(query);
+        return new QueryBuilder<>(query);
     }
 
-    public Query build() {
+    public Query<E> build() {
         return query;
     }
 
-    public CriteriaConfigurer<String, CriteriaString> withCriteria(String criteriaKey, String parameter) {
-        return CriteriaConfigurer.forCriteria(this, criteriaKey, parameter);
-    }
-
-    public CriteriaConfigurer<Long, CriteriaLong> withCriteria(String criteriaKey, Long parameter) {
-        return CriteriaConfigurer.forCriteria(this, criteriaKey, parameter);
-    }
-
-    public CriteriaConfigurer<Integer, CriteriaInteger> withCriteria(String criteriaKey, Integer parameter) {
-        return CriteriaConfigurer.forCriteria(this, criteriaKey, parameter);
-    }
-
-    public CriteriaConfigurer<Float, CriteriaFloat> withCriteria(String criteriaKey, Float parameter) {
-        return CriteriaConfigurer.forCriteria(this, criteriaKey, parameter);
-    }
-
-    public CriteriaConfigurer<Double, CriteriaDouble> withCriteria(String criteriaKey, Double parameter) {
-        return CriteriaConfigurer.forCriteria(this, criteriaKey, parameter);
-
-    }
-
-    public CriteriaConfigurer<Boolean, CriteriaBoolean> withCriteria(String criteriaKey, Boolean parameter) {
-        return CriteriaConfigurer.forCriteria(this, criteriaKey, parameter);
-
-    }
-
-    public CriteriaConfigurer<LocalDate, CriteriaDate> withCriteria(String criteriaKey, LocalDate parameter) {
-        return CriteriaConfigurer.forCriteria(this, criteriaKey, parameter);
-    }
-
-    public QueryBuilder and() {
+    public QueryBuilder<E> setMaxResults(int maxResults) {
+        query.setMaxResults(maxResults);
         return this;
+    }
+
+    public <F> CriteriaBuilder<E, F, CriteriaSimple<F>> withCriteria(String criteriaKey, F parameter) {
+        return CriteriaBuilder.addCriteria(this, criteriaKey, parameter);
+    }
+
+    public CriteriaBuilder<E, LocalDate, CriteriaDate> withCriteria(String criteriaKey, LocalDate parameter) {
+        return CriteriaBuilder.addCriteria(this, criteriaKey, parameter);
+    }
+
+    public <F> QueryBuilder<E> orCriteria(String criteriaKey, F parameter) {
+        return CriteriaBuilder.addCriteria(this, criteriaKey, parameter).withLinkOperator("OR").and();
+    }
+
+    public QueryBuilder<E> orCriteria(String criteriaKey, LocalDate parameter) {
+        return CriteriaBuilder.addCriteria(this, criteriaKey, parameter).withLinkOperator("OR").and();
+    }
+
+    public <F> QueryBuilder<E> andCriteria(String criteriaKey, F parameter) {
+        return CriteriaBuilder.addCriteria(this, criteriaKey, parameter).and();
+    }
+
+    public QueryBuilder<E> andCriteria(String criteriaKey, LocalDate parameter) {
+        return CriteriaBuilder.addCriteria(this, criteriaKey, parameter).and();
     }
 
     /**
@@ -68,7 +58,7 @@ public class QueryBuilder {
      * 
      * @return
      */
-    Query getQuery() {
+    Query<E> getQuery() {
         return query;
     }
 }

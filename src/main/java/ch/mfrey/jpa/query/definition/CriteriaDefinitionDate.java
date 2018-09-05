@@ -16,19 +16,18 @@ public class CriteriaDefinitionDate extends AbstractCriteriaDefinition<CriteriaD
 
     /** The Constant CRITERIA_DATE_EQUAL_PARAMETER. */
     public static final String CRITERIA_DATE_TIME_MAX_PARAMETER =
-            "{#query.criterias[{0}].maxDateTime}"; //$NON-NLS-1$
+            "{#query.criterias[|POSITION|].maxDateTime}"; //$NON-NLS-1$
 
     /** The Constant CRITERIA_DATE_EQUAL_PARAMETER. */
     public static final String CRITERIA_DATE_TIME_MIN_PARAMETER =
-            "{#query.criterias[{0}].minDateTime}"; //$NON-NLS-1$
+            "{#query.criterias[|POSITION|].minDateTime}"; //$NON-NLS-1$
 
     /** The Constant CRITERIA_DATE_EQUAL_PARAMETER. */
     public static final String CRITERIA_DATE_TIME_BETWEEN_PARAMETER =
             " BETWEEN " + CRITERIA_DATE_TIME_MIN_PARAMETER + " AND " + CRITERIA_DATE_TIME_MAX_PARAMETER; //$NON-NLS-1$
 
     @Override
-    public void applyRestriction(StringBuilder restrictionsPart, Query query, CriteriaDate criteria, int position) {
-
+    public StringBuilder getRestriction(Query<?> query, CriteriaDate criteria) {
         StringBuilder restriction;
         if (LocalDateTime.class.isAssignableFrom(
                 getResultDescriptor().getPropertyType())) {
@@ -66,7 +65,7 @@ public class CriteriaDefinitionDate extends AbstractCriteriaDefinition<CriteriaD
                     .append(QUERY_APPEND_SPACE).append(criteria.getOperator()).append(QUERY_APPEND_SPACE)
                     .append(CRITERIA_PARAMETER);
         }
-        restrictionsPart.append(replacePosition(restriction, position));
+        return restriction;
     }
 
     @Override

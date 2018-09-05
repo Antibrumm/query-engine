@@ -33,8 +33,12 @@ import ch.mfrey.jpa.query.model.Criteria;
 
 @SuppressWarnings("rawtypes")
 @Component
-public class DefaultCriteriaDefinitionBuilder
+class DefaultCriteriaDefinitionBuilder
         implements CriteriaDefinitionBuilder<Criteria<?>, CriteriaDefinition<Criteria<?>>> {
+
+    public DefaultCriteriaDefinitionBuilder() {
+        super();
+    }
 
     @Override
     public CriteriaDefinition build(AccessorDescriptor descriptor) {
@@ -42,17 +46,8 @@ public class DefaultCriteriaDefinitionBuilder
         if (String.class.isAssignableFrom(resultType)) {
             return new CriteriaDefinitionString(descriptor);
         }
-        if (Integer.class.isAssignableFrom(resultType)) {
-            return new CriteriaDefinitionNumber<>(descriptor);
-        }
-        if (Long.class.isAssignableFrom(resultType)) {
-            return new CriteriaDefinitionNumber<>(descriptor);
-        }
-        if (Float.class.isAssignableFrom(resultType)) {
-            return new CriteriaDefinitionNumber<>(descriptor);
-        }
-        if (Double.class.isAssignableFrom(resultType)) {
-            return new CriteriaDefinitionNumber<>(descriptor);
+        if (Number.class.isAssignableFrom(resultType)) {
+            return new CriteriaDefinitionNumber(descriptor);
         }
         if (Boolean.class.isAssignableFrom(resultType)) {
             return new CriteriaDefinitionBoolean(descriptor);

@@ -14,7 +14,7 @@ public interface CriteriaDefinition<CRITERIA extends Criteria<?>> {
  
     List<PropertyDescriptor> getPropertyDescriptors();
  
-    void applyRestriction(StringBuilder restrictionsPart, Query query, CRITERIA criteria, int position);
+    StringBuilder getRestriction(Query<?> query, CRITERIA criteria);
 
     boolean isTerminal();
 

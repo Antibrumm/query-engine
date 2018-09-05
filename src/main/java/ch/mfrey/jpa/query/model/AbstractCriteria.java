@@ -1,7 +1,8 @@
 package ch.mfrey.jpa.query.model;
 
 public abstract class AbstractCriteria<PARAMETER_TYPE> implements Criteria<PARAMETER_TYPE> {
-
+    public static final String LINK_OPERATOR_OR = "OR";
+    public static final String LINK_OPERATOR_AND = "AND";
     private boolean bracketClose = false;
 
     private boolean bracketOpen = false;
@@ -11,7 +12,7 @@ public abstract class AbstractCriteria<PARAMETER_TYPE> implements Criteria<PARAM
     private String criteriaKey;
 
     /** The link operator. */
-    private String linkOperator = "AND"; //$NON-NLS-1$
+    private String linkOperator = LINK_OPERATOR_AND; // $NON-NLS-1$
 
     /** The operator. */
     private String operator = "="; //$NON-NLS-1$

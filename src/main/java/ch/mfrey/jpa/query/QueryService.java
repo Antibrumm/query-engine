@@ -11,6 +11,7 @@ import javax.persistence.TypedQuery;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import ch.mfrey.jpa.query.model.Query;
 import ch.mfrey.jpa.query.support.SpringContextExpressionEvaluator;
@@ -31,15 +32,30 @@ public class QueryService {
         return "el" + (loc + 1); //$NON-NLS-1$
     }
 
-    public javax.persistence.Query parseQuery(Query query) {
+    public <E> TypedQuery<E> parseQuery(Query<E> query) {
         return parseQuery(query, null);
     }
 
-    public javax.persistence.Query parseQuery(Query query, List<String> restrictions) {
-        Map<String, String> parameters = new HashMap<>();
+    @SuppressWarnings("unchecked")
+    public <E> TypedQuery<E> parseQuery(Query<E> query, List<String> restrictions) {
         String queryString = queryTranslator.buildQuery(query, restrictions);
+        return (TypedQuery<E>) parseAndAssignQuery(queryString, query, false);
+    }
+
+    public <E> TypedQuery<Long> parseCountQuery(Query<E> query) {
+        return parseCountQuery(query, null);
+    }
+
+    @SuppressWarnings("unchecked")
+    public <E> TypedQuery<Long> parseCountQuery(Query<E> query, List<String> restrictions) {
+        String queryString = queryTranslator.buildCountQuery(query, restrictions);
+        return (TypedQuery<Long>) parseAndAssignQuery(queryString, query, true);
+    }
+
+    protected <E> TypedQuery<?> parseAndAssignQuery(String queryString, Query<E> query, boolean forCountQuery) {
         StringTokenizer tokens = new StringTokenizer(queryString, "{}", true); //$NON-NLS-1$
         StringBuilder queryBuilder = new StringBuilder(queryString.length());
+        Map<String, String> parameters = new HashMap<>();
         while (tokens.hasMoreTokens()) {
             String token = tokens.nextToken();
             if ("{".equals(token) && tokens.hasMoreTokens()) { //$NON-NLS-1$
@@ -56,13 +72,16 @@ public class QueryService {
                 queryBuilder.append(token);
             }
         }
-
-        TypedQuery<?> jpaQuery = entityManager.createQuery(queryBuilder.toString(), query.getEntityClass());
+        Class<?> returnType = forCountQuery ? Long.class : query.getEntityClass();
+        TypedQuery<?> jpaQuery = entityManager.createQuery(queryBuilder.toString(), returnType);
         assignParameters(jpaQuery, query, parameters);
+        if (!forCountQuery && query.getMaxResults() != null) {
+            jpaQuery.setMaxResults(query.getMaxResults());
+        }
         return jpaQuery;
     }
 
-    protected void assignParameters(final javax.persistence.Query jpaQuery, Query query,
+    protected <E, R> void assignParameters(final TypedQuery<R> jpaQuery, Query<E> query,
             Map<String, String> parameterExpressions) {
         Map<String, Object> variables = new HashMap<>();
         variables.put("query", query); //$NON-NLS-1$
@@ -70,6 +89,30 @@ public class QueryService {
             Object result = expressionEvaluator.evaluate(entry.getValue(), variables);
             jpaQuery.setParameter(entry.getKey(), result);
         });
+    }
+
+    /**
+     * Gets the query result.
+     *
+     * @param query
+     *            the query
+     * @return the query result
+     */
+    @Transactional(readOnly = true)
+    public <E> Long getResultCount(final Query<E> query) {
+        return (Long) parseCountQuery(query, null).getSingleResult();
+    }
+
+    /**
+     * Gets the result list.
+     *
+     * @param query
+     *            the query
+     * @return the result list
+     */
+    @Transactional(readOnly = true)
+    public <E> List<E> getResultList(final Query<E> query) {
+        return parseQuery(query, null).getResultList();
     }
 
 }

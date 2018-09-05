@@ -2,8 +2,21 @@ package ch.mfrey.jpa.query.builder;
 
 import java.beans.PropertyDescriptor;
 
-public class SimpleJoinBuilder {
-    boolean supports(PropertyDescriptor pd) {
-        return true;
+import ch.mfrey.jpa.query.definition.AbstractCriteriaDefinition;
+
+public class SimpleJoinBuilder implements JoinBuilder {
+
+    @Override
+    public StringBuilder buildJoin(String link, PropertyDescriptor pd, String synonym, String nextSynonym) {
+        return new StringBuilder().append(synonym)
+                .append(AbstractCriteriaDefinition.QUERY_APPEND_DOT)
+                .append(pd.getName())
+                .append(AbstractCriteriaDefinition.QUERY_APPEND_SPACE)
+                .append(nextSynonym);
+    }
+
+    @Override
+    public boolean supports(String link, PropertyDescriptor pd) {
+        return link.equals(pd.getName());
     }
 }

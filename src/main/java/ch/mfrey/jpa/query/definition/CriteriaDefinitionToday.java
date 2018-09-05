@@ -14,7 +14,7 @@ public class CriteriaDefinitionToday extends AbstractCriteriaDefinition<Criteria
     }
 
     @Override
-    public void applyRestriction(StringBuilder restrictionsPart, Query query, CriteriaToday criteria, int position) {
+    public StringBuilder getRestriction(Query<?> query, CriteriaToday criteria) {
 
         throw new IllegalArgumentException("TODO");
     }

@@ -5,17 +5,19 @@ import java.util.List;
 
 import org.springframework.util.StringUtils;
 
-public class Query {
+public class Query<E> {
+
+    private Integer maxResults = null;
 
     private List<Criteria<?>> criterias = new ArrayList<>();
 
-    private Class<?> entityClass;
+    private Class<E> entityClass;
 
     public List<Criteria<?>> getCriterias() {
         return criterias;
     }
 
-    public Class<?> getEntityClass() {
+    public Class<E> getEntityClass() {
         return entityClass;
     }
 
@@ -23,7 +25,7 @@ public class Query {
         this.criterias = criterias;
     }
 
-    public void setEntityClass(Class<?> entityClass) {
+    public void setEntityClass(Class<E> entityClass) {
         this.entityClass = entityClass;
     }
 
@@ -32,7 +34,8 @@ public class Query {
     }
 
     /**
-     * Checks if a subselect is needed to deduplicate the results. could be more sophisticated, like "includes ..ToMany join"
+     * Checks if a subselect is needed to deduplicate the results. could be more sophisticated, like "includes ..ToMany
+     * join"
      * 
      * @return
      */
@@ -43,5 +46,13 @@ public class Query {
             }
         }
         return false;
+    }
+
+    public Integer getMaxResults() {
+        return maxResults;
+    }
+
+    public void setMaxResults(Integer maxResults) {
+        this.maxResults = maxResults;
     }
 }

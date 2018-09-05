@@ -1,10 +1,9 @@
 package ch.mfrey.jpa.query;
 
 import java.beans.PropertyDescriptor;
-import java.lang.reflect.ParameterizedType;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -12,9 +11,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 
-import ch.mfrey.bean.ad.ClassUtils;
-import ch.mfrey.jpa.query.definition.AbstractCriteriaDefinition;
+import ch.mfrey.bean.ad.AccessorDescriptorBuilder;
+import ch.mfrey.jpa.query.builder.JoinBuilder;
+import ch.mfrey.jpa.query.builder.MapJoinBuilder;
+import ch.mfrey.jpa.query.builder.SimpleJoinBuilder;
 import ch.mfrey.jpa.query.definition.CriteriaDefinition;
+import ch.mfrey.jpa.query.definition.CriteriaDefinitionFactory;
 import ch.mfrey.jpa.query.model.Criteria;
 import ch.mfrey.jpa.query.model.Query;
 
@@ -52,7 +54,7 @@ public class QueryTranslator {
                 resultingRestrictions.append(" AND "); //$NON-NLS-1$
             }
             resultingRestrictions
-                    .append('(').append(explicitRestrictions.get(i).replaceAll("|entitySynonym|", entitySynonym)) //$NON-NLS-1$
+                    .append('(').append(explicitRestrictions.get(i).replaceAll("|synonym|", entitySynonym)) //$NON-NLS-1$
                     .append(')');
         }
         resultingRestrictions.append(')');
@@ -67,7 +69,7 @@ public class QueryTranslator {
      *            the query
      */
     @SuppressWarnings({ "rawtypes", "unchecked" })
-    protected void appendQueryRestrictions(final StringBuilder resultingRestrictions, final Query query) {
+    protected void appendQueryRestrictions(final StringBuilder resultingRestrictions, final Query<?> query) {
         int brackets = 0;
         for (int position = 0; position < query.getCriterias().size(); position++) {
             Criteria<?> criteria = query.getCriterias().get(position);
@@ -76,9 +78,7 @@ public class QueryTranslator {
             if (criteria.getParameter() == null) {
                 continue;
             }
-            CriteriaDefinition definition =
-                    criteriaDefinitionFactory.getCriteriaDefinition(query.getEntityClass(),
-                            criteria.getCriteriaKey());
+
             if (resultingRestrictions.length() == 0) {
                 resultingRestrictions.append(" WHERE ("); //$NON-NLS-1$
             } else {
@@ -91,7 +91,11 @@ public class QueryTranslator {
                 brackets++;
             }
 
-            definition.applyRestriction(resultingRestrictions, query, criteria, position);
+            CriteriaDefinition definition = criteriaDefinitionFactory.getCriteriaDefinition(query.getEntityClass(),
+                    criteria.getCriteriaKey());
+            StringBuilder restriction = definition.getRestriction(query, criteria);
+            replacePosition(restriction, position);
+            resultingRestrictions.append(restriction);
 
             if (criteria.isBracketClose()) {
                 resultingRestrictions.append(')');
@@ -122,6 +126,14 @@ public class QueryTranslator {
         }
     }
 
+    protected StringBuilder replacePosition(StringBuilder restriction, int position) {
+        int start;
+        while ((start = restriction.indexOf("|POSITION|")) != -1) {
+            restriction.replace(start, start + 10, String.valueOf(position));
+        }
+        return restriction;
+    }
+
     /**
      * Gets the joins.
      * 
@@ -130,40 +142,36 @@ public class QueryTranslator {
      *
      * @return the joins
      */
-    protected List<String> getJoins(Query query, Criteria<?> criteria, CriteriaDefinition<Criteria<?>> definition) {
+    protected List<String> getJoins(Query<?> query, Criteria<?> criteria, CriteriaDefinition<Criteria<?>> definition) {
         List<String> joins = new ArrayList<>();
         String[] links = criteria.getCriteriaKey().split("\\.");
-        Assert.isTrue(links.length != definition.getPropertyDescriptors().size() + 1, "Not same length");
+        Assert.isTrue(links.length != definition.getPropertyDescriptors().size() + 1,
+                "Not same length in links and propertyDescriptors");
         String synonym = query.getSynonym();
         List<PropertyDescriptor> propertyDescriptors = definition.getPropertyDescriptors();
-        for (int i = 0; i < propertyDescriptors.size() - 1; i++) {
+        for (int i = 0; i < links.length - 1; i++) {
+            String link = links[i];
             PropertyDescriptor pd = propertyDescriptors.get(i);
-            String nextSynonym = synonym + "_" + pd.getName();
-            StringBuilder join = new StringBuilder().append(synonym)
-                    .append(AbstractCriteriaDefinition.QUERY_APPEND_DOT)
-                    .append(pd.getName())
-                    .append(AbstractCriteriaDefinition.QUERY_APPEND_SPACE)
-                    .append(nextSynonym);
-
-            int mapIdx = links[i].indexOf('[');
-            if (mapIdx != -1) {
-                if (Map.class.isAssignableFrom(pd.getReadMethod().getReturnType())) {
-                    ParameterizedType pt = (ParameterizedType) pd.getReadMethod().getGenericReturnType();
-                    Class<?> typeToCheck = (Class<?>) pt.getActualTypeArguments()[0];
-                    if (ClassUtils.isSimpleValueType(typeToCheck)) {
-                        join.append(" ON key(")
-                                .append(nextSynonym)
-                                .append(") = '")
-                                .append(links[i].substring(mapIdx + 1, links[i].indexOf(']', mapIdx)))
-                                .append("'");
-                    }
-                }
-            }
+            String nextSynonym = synonym + "_" + link.replaceAll(AccessorDescriptorBuilder.INDEXED_ACCESSOR_PART, "");
+            JoinBuilder joinBuilder = getJoinBuilder(link, pd);
+            StringBuilder join = joinBuilder.buildJoin(link, pd, synonym, nextSynonym);
             joins.add(join.toString());
             synonym = nextSynonym;
         }
         return joins;
     }
+
+    private JoinBuilder getJoinBuilder(String link, PropertyDescriptor pd) {
+        for (JoinBuilder jb : joinBuilders) {
+            if (jb.supports(link, pd)) {
+                return jb;
+            }
+        }
+        throw new IllegalArgumentException(
+                "Not JoinBuilder found for link " + link + " and PropertyDescriptor " + pd.getName());
+    }
+
+    private List<JoinBuilder> joinBuilders = Arrays.asList(new MapJoinBuilder(), new SimpleJoinBuilder());
 
     /** The Constant QUERY_ORDER_BY. */
     private static final String QUERY_ORDER_BY = " ORDER BY ";
@@ -180,11 +188,11 @@ public class QueryTranslator {
     /** The Constant SELECT_PATTERN. */
     private static final Pattern SELECT_PATTERN = Pattern.compile("select\\s+(\\w+)\\s+from", Pattern.CASE_INSENSITIVE); //$NON-NLS-1$
 
-    public String buildCountQuery(Query query) {
+    public String buildCountQuery(Query<?> query) {
         return buildCountQuery(query, null);
     }
 
-    public String buildCountQuery(Query query, List<String> restrictions) {
+    public String buildCountQuery(Query<?> query, List<String> restrictions) {
         String ejbql = buildQuery(query, restrictions);
         Matcher m = SELECT_PATTERN.matcher(ejbql);
         if (m.find()) {
@@ -195,11 +203,11 @@ public class QueryTranslator {
         return ejbql;
     }
 
-    public String buildQuery(final Query query) {
+    public String buildQuery(final Query<?> query) {
         return buildQuery(query, null);
     }
 
-    public String buildQuery(final Query query, final List<String> explicitRestrictions) {
+    public String buildQuery(final Query<?> query, final List<String> explicitRestrictions) {
         if (query == null) {
             throw new IllegalArgumentException("Query cannot be null"); //$NON-NLS-1$
         }
@@ -240,7 +248,7 @@ public class QueryTranslator {
      *            the query
      * @return the joins
      */
-    protected <E extends Criteria<?>> String buildJoins(final Query query) {
+    protected <E extends Criteria<?>> String buildJoins(final Query<?> query) {
         StringBuilder joinsPart = new StringBuilder();
         List<String> appliedJoins = new ArrayList<>();
         for (int position = 0; position < query.getCriterias().size(); position++) {
@@ -273,7 +281,7 @@ public class QueryTranslator {
      *            the ignorable states
      * @return the user criterias
      */
-    protected String buildWhereClause(final Query query, final List<String> explicitRestrictions) {
+    protected String buildWhereClause(final Query<?> query, final List<String> explicitRestrictions) {
         StringBuilder whereClause = new StringBuilder();
         if (!query.getCriterias().isEmpty()) {
             appendQueryRestrictions(whereClause, query);

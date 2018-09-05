@@ -4,10 +4,10 @@ import java.util.Arrays;
 import java.util.List;
 
 import ch.mfrey.bean.ad.AccessorDescriptor;
-import ch.mfrey.jpa.query.model.CriteriaString;
+import ch.mfrey.jpa.query.model.CriteriaSimple;
 import ch.mfrey.jpa.query.model.Query;
 
-public class CriteriaDefinitionString extends AbstractCriteriaDefinition<CriteriaString> {
+public class CriteriaDefinitionString extends AbstractCriteriaDefinition<CriteriaSimple<String>> {
 
     public CriteriaDefinitionString(AccessorDescriptor accessorDescriptor) {
         super(accessorDescriptor);
@@ -16,11 +16,10 @@ public class CriteriaDefinitionString extends AbstractCriteriaDefinition<Criteri
     /**
      * Expression for fetching the string value from the criteria and use it with ignorecase.
      */
-    public static final String CRITERIA_UPPER_STRING_VALUE = "upper({#query.criterias[{0}].parameter})"; //$NON-NLS-1$
+    public static final String CRITERIA_UPPER_STRING_VALUE = "upper({#query.criterias[|POSITION|].parameter})"; //$NON-NLS-1$
 
     @Override
-    public void applyRestriction(StringBuilder restrictionsPart, Query query, CriteriaString criteria, int position) {
-
+    public StringBuilder getRestriction(Query<?> query, CriteriaSimple<String> criteria) {
         StringBuilder restriction;
         if (criteria.getParameter().indexOf('%') != -1) {
             switch (criteria.getOperator()) {
@@ -30,6 +29,7 @@ public class CriteriaDefinitionString extends AbstractCriteriaDefinition<Criteri
                             .append(')')
                             .append(" LIKE ")
                             .append(CRITERIA_UPPER_STRING_VALUE);
+                    break;
                 case "!=":
                     restriction = new StringBuilder().append("upper(").append(getSynonym()) //$NON-NLS-1$
                             .append(QUERY_APPEND_DOT).append(getResultDescriptor().getName())
@@ -47,7 +47,7 @@ public class CriteriaDefinitionString extends AbstractCriteriaDefinition<Criteri
                     .append(QUERY_APPEND_SPACE).append(criteria.getOperator()).append(QUERY_APPEND_SPACE)
                     .append(CRITERIA_UPPER_STRING_VALUE);
         }
-        restrictionsPart.append(replacePosition(restriction, position));
+        return restriction;
     }
 
     @Override
