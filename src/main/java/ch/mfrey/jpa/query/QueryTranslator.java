@@ -1,6 +1,5 @@
 package ch.mfrey.jpa.query;
 
-import java.beans.PropertyDescriptor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -12,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 
 import ch.mfrey.bean.ad.AccessorDescriptorBuilder;
+import ch.mfrey.bean.ad.BeanPropertyDescriptor;
 import ch.mfrey.jpa.query.builder.JoinBuilder;
 import ch.mfrey.jpa.query.builder.MapJoinBuilder;
 import ch.mfrey.jpa.query.builder.SimpleJoinBuilder;
@@ -32,16 +32,6 @@ public class QueryTranslator {
     @Autowired
     private CriteriaDefinitionFactory criteriaDefinitionFactory;
 
-    /**
-     * Append fixed restrictions.
-     *
-     * @param resultingRestrictions
-     *            the user restrictions
-     * @param entitySynonym
-     *            the entity synonym
-     * @param explicitRestrictions
-     *            the restrictions
-     */
     protected void appendExplicitRestrictions(final StringBuilder resultingRestrictions, final String entitySynonym,
             final List<String> explicitRestrictions) {
         if (resultingRestrictions.length() == 0) {
@@ -60,14 +50,6 @@ public class QueryTranslator {
         resultingRestrictions.append(')');
     }
 
-    /**
-     * Append query restrictions.
-     *
-     * @param resultingRestrictions
-     *            the user restrictions
-     * @param query
-     *            the query
-     */
     @SuppressWarnings({ "rawtypes", "unchecked" })
     protected void appendQueryRestrictions(final StringBuilder resultingRestrictions, final Query<?> query) {
         int brackets = 0;
@@ -134,24 +116,16 @@ public class QueryTranslator {
         return restriction;
     }
 
-    /**
-     * Gets the joins.
-     * 
-     * @param criteria
-     * @param query
-     *
-     * @return the joins
-     */
     protected List<String> getJoins(Query<?> query, Criteria<?> criteria, CriteriaDefinition<Criteria<?>> definition) {
         List<String> joins = new ArrayList<>();
         String[] links = criteria.getCriteriaKey().split("\\.");
-        Assert.isTrue(links.length != definition.getPropertyDescriptors().size() + 1,
+        Assert.isTrue(links.length != definition.getBeanPropertyDescriptors().size() + 1,
                 "Not same length in links and propertyDescriptors");
         String synonym = query.getSynonym();
-        List<PropertyDescriptor> propertyDescriptors = definition.getPropertyDescriptors();
+        List<BeanPropertyDescriptor> propertyDescriptors = definition.getBeanPropertyDescriptors();
         for (int i = 0; i < links.length - 1; i++) {
             String link = links[i];
-            PropertyDescriptor pd = propertyDescriptors.get(i);
+            BeanPropertyDescriptor pd = propertyDescriptors.get(i);
             String nextSynonym = synonym + "_" + link.replaceAll(AccessorDescriptorBuilder.INDEXED_ACCESSOR_PART, "");
             JoinBuilder joinBuilder = getJoinBuilder(link, pd);
             StringBuilder join = joinBuilder.buildJoin(link, pd, synonym, nextSynonym);
@@ -161,7 +135,7 @@ public class QueryTranslator {
         return joins;
     }
 
-    private JoinBuilder getJoinBuilder(String link, PropertyDescriptor pd) {
+    private JoinBuilder getJoinBuilder(String link, BeanPropertyDescriptor pd) {
         for (JoinBuilder jb : joinBuilders) {
             if (jb.supports(link, pd)) {
                 return jb;
@@ -173,27 +147,16 @@ public class QueryTranslator {
 
     private List<JoinBuilder> joinBuilders = Arrays.asList(new MapJoinBuilder(), new SimpleJoinBuilder());
 
-    /** The Constant QUERY_ORDER_BY. */
-    private static final String QUERY_ORDER_BY = " ORDER BY ";
-
-    /** The Constant QUERY_SELECT. */
     private static final String QUERY_SELECT = "SELECT ";
 
-    /** The Constant QUERY_WHERE. */
     private static final String QUERY_WHERE = " WHERE ";
 
-    /** The Constant QUERY_FROM. */
     private static final String QUERY_FROM = " FROM ";
 
-    /** The Constant SELECT_PATTERN. */
     private static final Pattern SELECT_PATTERN = Pattern.compile("select\\s+(\\w+)\\s+from", Pattern.CASE_INSENSITIVE); //$NON-NLS-1$
 
     public String buildCountQuery(Query<?> query) {
-        return buildCountQuery(query, null);
-    }
-
-    public String buildCountQuery(Query<?> query, List<String> restrictions) {
-        String ejbql = buildQuery(query, restrictions);
+        String ejbql = buildQuery(query);
         Matcher m = SELECT_PATTERN.matcher(ejbql);
         if (m.find()) {
             String subject = m.group(1);
@@ -204,10 +167,6 @@ public class QueryTranslator {
     }
 
     public String buildQuery(final Query<?> query) {
-        return buildQuery(query, null);
-    }
-
-    public String buildQuery(final Query<?> query, final List<String> explicitRestrictions) {
         if (query == null) {
             throw new IllegalArgumentException("Query cannot be null"); //$NON-NLS-1$
         }
@@ -220,7 +179,7 @@ public class QueryTranslator {
                 .append(' ')
                 .append(entitySynonym);
         inner.append(buildJoins(query));
-        inner.append(buildWhereClause(query, explicitRestrictions));
+        inner.append(buildWhereClause(query));
         if (!query.needsSubselect()) {
             return inner.toString();
         }
@@ -241,13 +200,6 @@ public class QueryTranslator {
         return full.toString();
     }
 
-    /**
-     * Gets the joins.
-     *
-     * @param query
-     *            the query
-     * @return the joins
-     */
     protected <E extends Criteria<?>> String buildJoins(final Query<?> query) {
         StringBuilder joinsPart = new StringBuilder();
         List<String> appliedJoins = new ArrayList<>();
@@ -270,24 +222,10 @@ public class QueryTranslator {
         return joinsPart.toString();
     }
 
-    /**
-     * Gets the user criterias.
-     *
-     * @param query
-     *            the query
-     * @param restrictions
-     *            the restrictions
-     * @param ignorableStates
-     *            the ignorable states
-     * @return the user criterias
-     */
-    protected String buildWhereClause(final Query<?> query, final List<String> explicitRestrictions) {
+    protected String buildWhereClause(final Query<?> query) {
         StringBuilder whereClause = new StringBuilder();
         if (!query.getCriterias().isEmpty()) {
             appendQueryRestrictions(whereClause, query);
-        }
-        if (explicitRestrictions != null && !explicitRestrictions.isEmpty()) {
-            appendExplicitRestrictions(whereClause, query.getSynonym(), explicitRestrictions);
         }
         return whereClause.toString();
     }

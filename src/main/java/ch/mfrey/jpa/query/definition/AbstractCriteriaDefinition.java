@@ -1,11 +1,11 @@
 package ch.mfrey.jpa.query.definition;
 
-import java.beans.PropertyDescriptor;
 import java.util.List;
 
 import org.springframework.util.StringUtils;
 
 import ch.mfrey.bean.ad.AccessorDescriptor;
+import ch.mfrey.bean.ad.BeanPropertyDescriptor;
 import ch.mfrey.jpa.query.model.Criteria;
 
 /**
@@ -30,7 +30,7 @@ public abstract class AbstractCriteriaDefinition<CRITERIA extends Criteria<?>> i
 
     private final int propertyLevel;
 
-    private final List<PropertyDescriptor> propertyDescriptors;
+    private final List<BeanPropertyDescriptor> propertyDescriptors;
 
     private final String fullPropertyAccessor;
 
@@ -40,7 +40,7 @@ public abstract class AbstractCriteriaDefinition<CRITERIA extends Criteria<?>> i
         this.entityClass = accessorDescriptor.getType();
         this.criteriaKey = accessorDescriptor.getPropertyAccessor();
         this.fullPropertyAccessor = accessorDescriptor.getFullPropertyAccessor();
-        this.propertyDescriptors = accessorDescriptor.getPropertyDescriptors();
+        this.propertyDescriptors = accessorDescriptor.getBeanPropertyDescriptors();
         this.propertyLevel = accessorDescriptor.getPropertyLevel();
     }
 
@@ -53,7 +53,7 @@ public abstract class AbstractCriteriaDefinition<CRITERIA extends Criteria<?>> i
      *
      * @return the property descriptors
      */
-    public List<PropertyDescriptor> getPropertyDescriptors() {
+    public List<BeanPropertyDescriptor> getBeanPropertyDescriptors() {
         return propertyDescriptors;
     }
 
@@ -71,7 +71,7 @@ public abstract class AbstractCriteriaDefinition<CRITERIA extends Criteria<?>> i
      *
      * @return the result descriptor
      */
-    public PropertyDescriptor getResultDescriptor() {
+    public BeanPropertyDescriptor getResultDescriptor() {
         return propertyDescriptors.get(propertyDescriptors.size() - 1);
     }
 
@@ -83,8 +83,6 @@ public abstract class AbstractCriteriaDefinition<CRITERIA extends Criteria<?>> i
     public Class<?> getEntityClass() {
         return entityClass;
     }
-
-    
 
     public String getSynonym() {
         String base = StringUtils.uncapitalize(getEntityClass().getSimpleName());
@@ -100,11 +98,7 @@ public abstract class AbstractCriteriaDefinition<CRITERIA extends Criteria<?>> i
     }
 
     public boolean isNullable() {
-        for (PropertyDescriptor pd : getPropertyDescriptors()) {
-            if (pd.getReadMethod() != null) {
-                return true;
-            }
-        }
+      
         return false;
     }
 

@@ -32,23 +32,15 @@ public class QueryService {
         return "el" + (loc + 1); //$NON-NLS-1$
     }
 
-    public <E> TypedQuery<E> parseQuery(Query<E> query) {
-        return parseQuery(query, null);
-    }
-
     @SuppressWarnings("unchecked")
-    public <E> TypedQuery<E> parseQuery(Query<E> query, List<String> restrictions) {
-        String queryString = queryTranslator.buildQuery(query, restrictions);
+    public <E> TypedQuery<E> parseQuery(Query<E> query) {
+        String queryString = queryTranslator.buildQuery(query);
         return (TypedQuery<E>) parseAndAssignQuery(queryString, query, false);
     }
 
-    public <E> TypedQuery<Long> parseCountQuery(Query<E> query) {
-        return parseCountQuery(query, null);
-    }
-
     @SuppressWarnings("unchecked")
-    public <E> TypedQuery<Long> parseCountQuery(Query<E> query, List<String> restrictions) {
-        String queryString = queryTranslator.buildCountQuery(query, restrictions);
+    public <E> TypedQuery<Long> parseCountQuery(Query<E> query) {
+        String queryString = queryTranslator.buildCountQuery(query);
         return (TypedQuery<Long>) parseAndAssignQuery(queryString, query, true);
     }
 
@@ -91,28 +83,14 @@ public class QueryService {
         });
     }
 
-    /**
-     * Gets the query result.
-     *
-     * @param query
-     *            the query
-     * @return the query result
-     */
     @Transactional(readOnly = true)
     public <E> Long getResultCount(final Query<E> query) {
-        return (Long) parseCountQuery(query, null).getSingleResult();
+        return (Long) parseCountQuery(query).getSingleResult();
     }
 
-    /**
-     * Gets the result list.
-     *
-     * @param query
-     *            the query
-     * @return the result list
-     */
     @Transactional(readOnly = true)
     public <E> List<E> getResultList(final Query<E> query) {
-        return parseQuery(query, null).getResultList();
+        return parseQuery(query).getResultList();
     }
 
 }

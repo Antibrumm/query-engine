@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import ch.mfrey.bean.ad.AccessorDescriptor;
 import ch.mfrey.bean.ad.AccessorDescriptorBuilder;
 import ch.mfrey.bean.ad.AccessorDescriptorFactory;
+import ch.mfrey.bean.ad.BeanPropertyDescriptor;
 import ch.mfrey.jpa.query.builder.CriteriaDefinitionBuilder;
 
 @Service
@@ -104,22 +105,26 @@ public class CriteriaDefinitionFactory {
                 }
                 Class<?> returnType = pd.getPropertyType();
                 if (returnType.isArray()) {
-                    builder = builder.withPropertyDescriptor(pd.getName() + "[]", pd);
+                    builder = builder.withPropertyDescriptor(pd.getName() + "[]",
+                            new BeanPropertyDescriptor(entityClass, pd));
                     type = pd.getClass().getComponentType();
+                } else if (Map.class.isAssignableFrom(returnType) && pd.getReadMethod() != null
+                        && pd.getReadMethod().getGenericReturnType() instanceof ParameterizedType) {
+                    ParameterizedType parameterizedType = (ParameterizedType) pd.getReadMethod().getGenericReturnType();
+                    builder = builder.withPropertyDescriptor(links[i],
+                            new BeanPropertyDescriptor(entityClass, pd));
+                    type = (Class<?>) parameterizedType.getActualTypeArguments()[1];
                 } else if (Collection.class.isAssignableFrom(returnType)
                         && pd.getReadMethod().getGenericReturnType() instanceof ParameterizedType) {
                     ParameterizedType parameterizedType = (ParameterizedType) pd.getReadMethod().getGenericReturnType();
                     if (parameterizedType.getActualTypeArguments()[0] instanceof Class) {
-                        builder = builder.withPropertyDescriptor(pd.getName() + "[]", pd);
+                        builder = builder.withPropertyDescriptor(pd.getName() + "[]",
+                                new BeanPropertyDescriptor(entityClass, pd));
                         type = (Class<?>) parameterizedType.getActualTypeArguments()[0];
                     }
-                } else if (Map.class.isAssignableFrom(returnType) && pd.getReadMethod() != null
-                        && pd.getReadMethod().getGenericReturnType() instanceof ParameterizedType) {
-                    ParameterizedType parameterizedType = (ParameterizedType) pd.getReadMethod().getGenericReturnType();
-                    builder = builder.withPropertyDescriptor(links[i], pd);
-                    type = (Class<?>) parameterizedType.getActualTypeArguments()[0];
                 } else {
-                    builder = builder.withPropertyDescriptor(pd.getName(), pd);
+                    builder = builder.withPropertyDescriptor(pd.getName(),
+                            new BeanPropertyDescriptor(entityClass, pd));
                 }
             }
             return buildDefinition(builder.build());

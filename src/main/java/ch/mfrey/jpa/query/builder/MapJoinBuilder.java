@@ -1,15 +1,15 @@
 package ch.mfrey.jpa.query.builder;
 
-import java.beans.PropertyDescriptor;
 import java.lang.reflect.ParameterizedType;
 import java.util.Map;
 
+import ch.mfrey.bean.ad.BeanPropertyDescriptor;
 import ch.mfrey.bean.ad.ClassUtils;
 import ch.mfrey.jpa.query.definition.AbstractCriteriaDefinition;
 
 public class MapJoinBuilder implements JoinBuilder {
     @Override
-    public StringBuilder buildJoin(String link, PropertyDescriptor pd, String synonym, String nextSynonym) {
+    public StringBuilder buildJoin(String link, BeanPropertyDescriptor pd, String synonym, String nextSynonym) {
         StringBuilder join = new StringBuilder().append(synonym)
                 .append(AbstractCriteriaDefinition.QUERY_APPEND_DOT)
                 .append(pd.getName())
@@ -17,7 +17,7 @@ public class MapJoinBuilder implements JoinBuilder {
                 .append(nextSynonym);
         int mapIdx = link.indexOf('[');
 
-        ParameterizedType pt = (ParameterizedType) pd.getReadMethod().getGenericReturnType();
+        ParameterizedType pt = (ParameterizedType) pd.getPropertyDescriptor().getReadMethod().getGenericReturnType();
         Class<?> typeToCheck = (Class<?>) pt.getActualTypeArguments()[0];
         if (ClassUtils.isSimpleValueType(typeToCheck)) {
             join.append(" ON key(")
@@ -31,8 +31,8 @@ public class MapJoinBuilder implements JoinBuilder {
 
     }
 
-    public boolean supports(String link, PropertyDescriptor pd) {
-        return Map.class.isAssignableFrom(pd.getReadMethod().getReturnType()) && link.indexOf('[') != -1
+    public boolean supports(String link, BeanPropertyDescriptor pd) {
+        return Map.class.isAssignableFrom(pd.getPropertyType()) && link.indexOf('[') != -1
                 && link.indexOf("[VALUE]") == -1;
     }
 }

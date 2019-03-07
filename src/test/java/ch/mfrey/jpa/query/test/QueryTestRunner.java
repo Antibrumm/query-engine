@@ -1,6 +1,5 @@
 package ch.mfrey.jpa.query.test;
 
-import java.beans.PropertyDescriptor;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -22,6 +21,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import ch.mfrey.bean.ad.BeanPropertyDescriptor;
 import ch.mfrey.jpa.query.QueryService;
 import ch.mfrey.jpa.query.QueryTranslator;
 import ch.mfrey.jpa.query.builder.CriteriaBuilder;
@@ -74,6 +74,7 @@ public class QueryTestRunner {
             final Long totalCount,
             final boolean doLoadEntitiesAndValidate, final List<CriteriaDefinition<?>> failedCriteriaProperties) {
         log.debug("Testing {}", definition.getCriteriaKey());
+        @SuppressWarnings("unchecked")
         Class<E> queryClass = HibernateProxyHelper.getClassWithoutInitializingProxy(beanWrapper.getWrappedInstance());
         QueryBuilder<E> builder = QueryBuilder.forEntity(queryClass);
         boolean filterOk = false;
@@ -110,7 +111,7 @@ public class QueryTestRunner {
                     Assert.assertEquals(count.intValue(), entities.size());
                 }
             }
-            if (definition.getPropertyDescriptors().size() == 1 && (equalsCount + notEqualsCount != totalCount)) {
+            if (definition.getBeanPropertyDescriptors().size() == 1 && (equalsCount + notEqualsCount != totalCount)) {
                 log.error("Error in Filter: {} (= {}) + (!= {}) == {} [{}]",
                         definition.getCriteriaKey(), equalsCount, notEqualsCount, totalCount,
                         StringUtils.collectionToCommaDelimitedString(operatorCounts));
@@ -140,7 +141,7 @@ public class QueryTestRunner {
     private Object getSearchParameter(final CriteriaDefinition<?> definition, final BeanWrapperImpl beanWrapper) {
         // Dive in to find a value candidate
         Object propertyValue = null;
-        for (PropertyDescriptor pd : definition.getPropertyDescriptors()) {
+        for (BeanPropertyDescriptor pd : definition.getBeanPropertyDescriptors()) {
             Class<?> propertyType = pd.getPropertyType();
             propertyValue = beanWrapper.getPropertyValue(pd.getName());
 
@@ -211,7 +212,7 @@ public class QueryTestRunner {
         BeanWrapperImpl beanWrapper = new BeanWrapperImpl();
         for (CriteriaDefinition<?> definition : definitions) {
             if (maxFilterLevel == -1
-                    || definition.getPropertyDescriptors().size() <= maxFilterLevel) {
+                    || definition.getBeanPropertyDescriptors().size() <= maxFilterLevel) {
                 beanWrapper.setWrappedInstance(testingEntity);
                 filter(definition, beanWrapper, totalCount, false, failedCriteriaProperties);
             } else {

@@ -1,8 +1,5 @@
 package ch.mfrey.jpa.query.builder;
 
-import java.beans.PropertyDescriptor;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -21,9 +18,9 @@ import javax.persistence.OneToMany;
 import javax.persistence.OneToOne;
 
 import org.springframework.stereotype.Component;
-import org.springframework.util.ReflectionUtils;
 
 import ch.mfrey.bean.ad.AccessorDescriptor;
+import ch.mfrey.bean.ad.BeanPropertyDescriptor;
 import ch.mfrey.jpa.query.definition.CriteriaDefinition;
 import ch.mfrey.jpa.query.definition.CriteriaDefinitionBoolean;
 import ch.mfrey.jpa.query.definition.CriteriaDefinitionDate;
@@ -68,43 +65,29 @@ class DefaultCriteriaDefinitionBuilder
                         || beanClass.isAnnotationPresent(Embeddable.class));
     }
 
-    public boolean isEntityProperty(PropertyDescriptor pd) {
-        Method readMethod = pd.getReadMethod();
-        if (readMethod != null
-                && (readMethod.isAnnotationPresent(OneToOne.class)
-                        || readMethod.isAnnotationPresent(OneToMany.class)
-                        || readMethod.isAnnotationPresent(ManyToMany.class)
-                        || readMethod.isAnnotationPresent(ManyToOne.class)
-                        || readMethod.isAnnotationPresent(Embedded.class))) {
-            return true;
-        }
-
-        Class<?> declaringClass = pd.getReadMethod().getDeclaringClass();
-        Field field = ReflectionUtils.findField(declaringClass, pd.getName());
-        if (field != null
-                && (field.isAnnotationPresent(OneToOne.class)
-                        || field.isAnnotationPresent(OneToMany.class)
-                        || field.isAnnotationPresent(ManyToMany.class)
-                        || field.isAnnotationPresent(ManyToOne.class)
-                        || field.isAnnotationPresent(Embedded.class))) {
-            return true;
-        }
-        return false;
+    public boolean isEntityProperty(BeanPropertyDescriptor pd) {
+        return pd.isAnnotationPresent(OneToOne.class)
+                || pd.isAnnotationPresent(OneToMany.class)
+                || pd.isAnnotationPresent(ManyToMany.class)
+                || pd.isAnnotationPresent(ManyToOne.class)
+                || pd.isAnnotationPresent(Embedded.class);
     }
 
     @Override
     public boolean supports(AccessorDescriptor descriptor) {
-        List<PropertyDescriptor> propertyDescriptors = descriptor.getPropertyDescriptors();
+        List<BeanPropertyDescriptor> propertyDescriptors = descriptor.getBeanPropertyDescriptors();
         for (int i = 0; i < propertyDescriptors.size() - 1; i++) {
-            PropertyDescriptor pd = propertyDescriptors.get(i);
-            Class<?> typeToCheck = pd.getReadMethod().getReturnType();
+            BeanPropertyDescriptor pd = propertyDescriptors.get(i);
+            Class<?> typeToCheck = pd.getPropertyType();
             if (typeToCheck.isArray()) {
                 typeToCheck = typeToCheck.getComponentType();
             } else if (Map.class.isAssignableFrom(typeToCheck)) {
-                ParameterizedType pt = (ParameterizedType) pd.getReadMethod().getGenericReturnType();
+                ParameterizedType pt =
+                        (ParameterizedType) pd.getPropertyDescriptor().getReadMethod().getGenericReturnType();
                 typeToCheck = (Class<?>) pt.getActualTypeArguments()[1];
             } else if (Collection.class.isAssignableFrom(typeToCheck)) {
-                ParameterizedType pt = (ParameterizedType) pd.getReadMethod().getGenericReturnType();
+                ParameterizedType pt =
+                        (ParameterizedType) pd.getPropertyDescriptor().getReadMethod().getGenericReturnType();
                 typeToCheck = (Class<?>) pt.getActualTypeArguments()[0];
             }
 
@@ -114,9 +97,15 @@ class DefaultCriteriaDefinitionBuilder
             }
         }
 
+        // TODO :Collections
         Class<?> resultType = descriptor.getResultDescriptor().getPropertyType();
         List<Class<?>> supported =
-                Arrays.asList(String.class, Number.class, Boolean.class, LocalDate.class, LocalDateTime.class);
+                Arrays.asList(
+                        String.class,
+                        Number.class,
+                        Boolean.class,
+                        LocalDate.class,
+                        LocalDateTime.class);
         for (Class<?> type : supported) {
             if (type.isAssignableFrom(resultType)) {
                 return true;
