@@ -16,7 +16,6 @@ import ch.mfrey.jpa.query.builder.JoinBuilder;
 import ch.mfrey.jpa.query.builder.MapJoinBuilder;
 import ch.mfrey.jpa.query.builder.SimpleJoinBuilder;
 import ch.mfrey.jpa.query.definition.CriteriaDefinition;
-import ch.mfrey.jpa.query.definition.CriteriaDefinitionFactory;
 import ch.mfrey.jpa.query.model.Criteria;
 import ch.mfrey.jpa.query.model.Query;
 

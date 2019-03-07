@@ -22,12 +22,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import ch.mfrey.bean.ad.BeanPropertyDescriptor;
+import ch.mfrey.jpa.query.CriteriaDefinitionFactory;
 import ch.mfrey.jpa.query.QueryService;
 import ch.mfrey.jpa.query.QueryTranslator;
 import ch.mfrey.jpa.query.builder.CriteriaBuilder;
 import ch.mfrey.jpa.query.builder.QueryBuilder;
 import ch.mfrey.jpa.query.definition.CriteriaDefinition;
-import ch.mfrey.jpa.query.definition.CriteriaDefinitionFactory;
 import ch.mfrey.jpa.query.model.CriteriaSimple;
 import ch.mfrey.jpa.query.model.Query;
 import ch.mfrey.jpa.query.test.entity.A;
@@ -279,23 +279,35 @@ public class QueryTestRunner {
 
         @Transactional
         public void initSomeEntities() {
+            List<A> al = new ArrayList<>();
+            List<B> bl = new ArrayList<>();
+            List<C> cl = new ArrayList<>();
+
             for (int i = 0; i < 100; i++) {
                 A a = new A();
                 a.setActive(random.nextBoolean());
                 a.setTitle("A Title -" + i);
                 em.persist(a);
+                al.add(a);
+            }
 
+            for (int i = 0; i < 100; i++) {
                 B b = new B();
                 b.setActive(random.nextBoolean());
                 b.setTitle("B Title - " + i);
-                b.setA(a);
+                b.setA(al.get(random.nextInt(al.size())));
                 em.persist(b);
+                bl.add(b);
+            }
 
+            for (int i = 0; i < 100; i++) {
                 C c = new C();
                 c.setTitle("C Title - " + i);
-                c.setB1(b);
+                c.setB1(bl.get(random.nextInt(bl.size())));
+                c.setB2(bl.get(random.nextInt(bl.size())));
                 c.setActive(random.nextBoolean());
                 em.persist(c);
+                cl.add(c);
             }
         }
     }

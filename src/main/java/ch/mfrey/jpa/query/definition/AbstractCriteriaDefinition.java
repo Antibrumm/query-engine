@@ -103,11 +103,19 @@ public abstract class AbstractCriteriaDefinition<CRITERIA extends Criteria<?>> i
     }
 
     public boolean isTerminal() {
-        return true;
+        return false;
     }
 
     public String getFullPropertyAccessor() {
         return fullPropertyAccessor;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append("AbstractCriteriaDefinition [entityClass=").append(entityClass).append(", criteriaKey=")
+                .append(criteriaKey).append(", fullPropertyAccessor=").append(fullPropertyAccessor).append("]");
+        return builder.toString();
     }
 
 }

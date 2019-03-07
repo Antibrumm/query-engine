@@ -12,12 +12,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
+import ch.mfrey.jpa.query.CriteriaDefinitionFactory;
 import ch.mfrey.jpa.query.QueryService;
 import ch.mfrey.jpa.query.QueryTranslator;
 import ch.mfrey.jpa.query.builder.CriteriaBuilder;
 import ch.mfrey.jpa.query.builder.QueryBuilder;
 import ch.mfrey.jpa.query.definition.CriteriaDefinition;
-import ch.mfrey.jpa.query.definition.CriteriaDefinitionFactory;
 import ch.mfrey.jpa.query.model.CriteriaDate;
 import ch.mfrey.jpa.query.model.CriteriaSimple;
 import ch.mfrey.jpa.query.model.Query;
@@ -105,7 +105,7 @@ public class QueryTest {
     @Test
     public void testB() {
         List<CriteriaDefinition<?>> criteriaDefinitions = criteriaDefinitionFactory.getCriteriaDefinitions(B.class);
-        Assert.assertEquals(6, criteriaDefinitions.size());
+        Assert.assertEquals(7, criteriaDefinitions.size());
 
         QueryBuilder<B> builder = QueryBuilder
                 .forEntity(B.class)
@@ -140,7 +140,7 @@ public class QueryTest {
     @Test
     public void testC() {
         List<CriteriaDefinition<?>> criteriaDefinitions = criteriaDefinitionFactory.getCriteriaDefinitions(C.class);
-        Assert.assertEquals(15, criteriaDefinitions.size());
+        Assert.assertEquals(19, criteriaDefinitions.size());
         QueryBuilder<C> builder = QueryBuilder
                 .forEntity(C.class)
                 .withCriteria("b1.id", 1L)
@@ -220,7 +220,7 @@ public class QueryTest {
     public void testArrayOne() {
         List<CriteriaDefinition<?>> criteriaDefinitions =
                 criteriaDefinitionFactory.getCriteriaDefinitions(ArrayOne.class);
-        Assert.assertEquals(4, criteriaDefinitions.size());
+        Assert.assertEquals(6, criteriaDefinitions.size());
 
         QueryBuilder<ArrayOne> builder = QueryBuilder
                 .forEntity(ArrayOne.class)
@@ -238,7 +238,7 @@ public class QueryTest {
     public void testCollectionOne() {
         List<CriteriaDefinition<?>> criteriaDefinitions =
                 criteriaDefinitionFactory.getCriteriaDefinitions(MapOne.class);
-        Assert.assertEquals(4, criteriaDefinitions.size());
+        Assert.assertEquals(7, criteriaDefinitions.size());
 
         QueryBuilder<CollectionOne> builder = QueryBuilder
                 .forEntity(CollectionOne.class)
@@ -256,7 +256,7 @@ public class QueryTest {
     public void testMapOne() {
         List<CriteriaDefinition<?>> criteriaDefinitions =
                 criteriaDefinitionFactory.getCriteriaDefinitions(MapOne.class);
-        Assert.assertEquals(4, criteriaDefinitions.size());
+        Assert.assertEquals(7, criteriaDefinitions.size());
 
         QueryBuilder<MapOne> builder = QueryBuilder
                 .forEntity(MapOne.class)
@@ -284,7 +284,7 @@ public class QueryTest {
     public void testLeftRightLeftChilds() {
         List<CriteriaDefinition<?>> criteriaDefinitions =
                 criteriaDefinitionFactory.getCriteriaDefinitions(LeftRightNode.class);
-        Assert.assertEquals(1, criteriaDefinitions.size());
+        Assert.assertEquals(3, criteriaDefinitions.size());
 
         QueryBuilder<LeftRightNode> builder = QueryBuilder
                 .forEntity(LeftRightNode.class)
@@ -301,7 +301,7 @@ public class QueryTest {
     public void testLeftRightBothChilds() {
         List<CriteriaDefinition<?>> criteriaDefinitions =
                 criteriaDefinitionFactory.getCriteriaDefinitions(LeftRightNode.class);
-        Assert.assertEquals(1, criteriaDefinitions.size());
+        Assert.assertEquals(3, criteriaDefinitions.size());
 
         QueryBuilder<LeftRightNode> builder = QueryBuilder
                 .forEntity(LeftRightNode.class)

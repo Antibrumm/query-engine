@@ -1,4 +1,4 @@
-package ch.mfrey.jpa.query.definition;
+package ch.mfrey.jpa.query;
 
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.ParameterizedType;
@@ -18,6 +18,7 @@ import ch.mfrey.bean.ad.AccessorDescriptorBuilder;
 import ch.mfrey.bean.ad.AccessorDescriptorFactory;
 import ch.mfrey.bean.ad.BeanPropertyDescriptor;
 import ch.mfrey.jpa.query.builder.CriteriaDefinitionBuilder;
+import ch.mfrey.jpa.query.definition.CriteriaDefinition;
 
 @Service
 public class CriteriaDefinitionFactory {
@@ -25,28 +26,19 @@ public class CriteriaDefinitionFactory {
     @Autowired
     private List<CriteriaDefinitionBuilder<?, ?>> builders;
     private static final Logger log = LoggerFactory.getLogger(CriteriaDefinitionFactory.class);
-    private AccessorDescriptorFactory accessorDescriptorFactory = new AccessorDescriptorFactory();
+
+    @Autowired
+    private AccessorDescriptorFactory accessorDescriptorFactory;
 
     public List<CriteriaDefinition<?>> getCriteriaDefinitions(Class<?> entityClass) {
         List<AccessorDescriptor> accessorDescriptors =
                 accessorDescriptorFactory.getAccessorDescriptors(entityClass);
         List<CriteriaDefinition<?>> definitions = new ArrayList<>();
-        List<String> terminatingDescriptors = new ArrayList<>();
         for (AccessorDescriptor descriptor : accessorDescriptors) {
-            if (!shouldIgnore(descriptor, terminatingDescriptors)) {
-                try {
-                    boolean isTerminating = handleAccessorDescriptor(descriptor, definitions);
-                    if (isTerminating) {
-                        terminatingDescriptors.add(descriptor.getPropertyAccessor());
-                    } else {
-                        // we need to check deeper as there might be other references of the same class which
-                        // should produce more criterias.
-                        // ..ToMany backreferences and any other reference
-
-                    }
-                } catch (IllegalArgumentException e) {
-                    log.debug("No builder for accessor descriptor {}", descriptor);
-                }
+            try {
+                handleAccessorDescriptor(descriptor, definitions);
+            } catch (IllegalArgumentException e) {
+                log.debug("No builder for accessor descriptor {}", descriptor);
             }
         }
         return definitions;
@@ -67,15 +59,6 @@ public class CriteriaDefinitionFactory {
         CriteriaDefinition<?> criteriaDefinition = buildDefinition(descriptor);
         definitions.add(criteriaDefinition);
         return criteriaDefinition.isTerminal();
-    }
-
-    private boolean shouldIgnore(AccessorDescriptor descriptor, List<String> terminatingDescriptors) {
-        for (String terminatingDescriptor : terminatingDescriptors) {
-            if (descriptor.getPropertyAccessor().startsWith(terminatingDescriptor + '.')) {
-                return true;
-            }
-        }
-        return false;
     }
 
     @SuppressWarnings("unchecked")

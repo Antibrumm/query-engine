@@ -17,6 +17,7 @@ import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
+import ch.mfrey.bean.ad.AccessorDescriptorFactory;
 import ch.mfrey.jpa.query.QueryService;
 
 @Configuration
@@ -56,5 +57,10 @@ public class ContextConfig {
     @Bean
     public PlatformTransactionManager transactionManager(final EntityManagerFactory emf) {
         return new JpaTransactionManager(emf);
+    }
+
+    @Bean
+    public AccessorDescriptorFactory accessorDescriptorFactory() {
+        return new AccessorDescriptorFactory();
     }
 }
